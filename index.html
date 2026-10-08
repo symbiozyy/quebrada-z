@@ -111,6 +111,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer
 
 /* ---------- touch controls ---------- */
 #touch{pointer-events:none}
+.stZone{position:absolute;left:0;top:0;width:0;height:0;border-radius:50%;pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;background:transparent}
 .stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
   border:2px solid rgba(255,255,255,.25);background:radial-gradient(circle,rgba(255,255,255,.06),rgba(255,255,255,.02));opacity:0;transition:opacity .15s}
 .stick.on{opacity:1}
@@ -823,6 +824,7 @@ body.hudEditing #hud *{pointer-events:none!important}
 <div id="flash" class="layer"></div>
 
 <div id="touch" class="layer hidden">
+  <div class="stZone" id="zoneL" data-side="L"></div><div class="stZone" id="zoneR" data-side="R"></div>
   <div class="stick" id="stickL" data-hud="stickL"><i class="ring"></i><div class="knob"></div><span class="sl">ANDAR</span></div>
   <div class="stick" id="stickR" data-hud="stickR"><i class="ring"></i><div class="knob"></div><span class="sl">MIRAR · ATIRAR</span></div>
   <button class="tbtn" id="bReload" data-hud="bReload" aria-label="Recarregar"><svg width="26" height="24" viewBox="0 0 13 12"><g><rect x="1" y="0" width="1" height="1" fill="#e8862a"/><rect x="0" y="1" width="3" height="2" fill="#c86a2a"/><rect x="0" y="3" width="3" height="7" fill="#f4d03f"/><rect x="0" y="3" width="1" height="7" fill="#fff0a0"/><rect x="0" y="10" width="3" height="2" fill="#a07a1a"/><rect x="6" y="0" width="1" height="1" fill="#e8862a"/><rect x="5" y="1" width="3" height="2" fill="#c86a2a"/><rect x="5" y="3" width="3" height="7" fill="#f4d03f"/><rect x="5" y="3" width="1" height="7" fill="#fff0a0"/><rect x="5" y="10" width="3" height="2" fill="#a07a1a"/><rect x="11" y="0" width="1" height="1" fill="#e8862a"/><rect x="10" y="1" width="3" height="2" fill="#c86a2a"/><rect x="10" y="3" width="3" height="7" fill="#f4d03f"/><rect x="10" y="3" width="1" height="7" fill="#fff0a0"/><rect x="10" y="10" width="3" height="2" fill="#a07a1a"/></g></svg><span class="lb">RECARGA</span></button>
@@ -1019,7 +1021,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
-const QZ_VERSION='25.9';
+const QZ_VERSION='25.10';
 if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
@@ -5315,6 +5317,20 @@ const USE_TE='ontouchstart' in window;
 if(TOUCH_DEV)S.input.touch=true;
 const TC={ts:0,tm:0,te:0,tx:0,pd:0,err:''};
 const sticks={L:{id:null,el:$('stickL'),cx:0,cy:0,r:50,lx:0,ly:0},R:{id:null,el:$('stickR'),cx:0,cy:0,r:50,lx:0,ly:0}};
+addEventListener('resize',()=>setTimeout(zonesFit,60));
+// The touch areas of the sticks are real elements: the phone always tells WHICH element a finger landed on, even when the
+// reported coordinates are wrong (iPhone, game drawn rotated inside a frame: positions can come without the rotation).
+// If the reported point is not where the touched element is, the coordinates are rotated: deltas are rotated back and an
+// offset is learned from every tap on a known element (stick area, button), so free aim also lands in the right place.
+const CAL={rot:null,tx:0,ty:0,n:0,raw:[0,0],exp:[0,0]};
+function rotA(x,y){return[y,-x]}
+function calibrate(x,y,el){if(!el||!el.getBoundingClientRect)return;const r=el.getBoundingClientRect();if(r.width<10||r.width>innerWidth*.8)return;
+  CAL.raw=[Math.round(x),Math.round(y)];CAL.exp=[Math.round(r.left+r.width/2),Math.round(r.top+r.height/2)];
+  if(x>=r.left-6&&x<=r.right+6&&y>=r.top-6&&y<=r.bottom+6){CAL.rot=false;return}
+  const[ax,ay]=rotA(x,y),tx=r.left+r.width/2-ax,ty=r.top+r.height/2-ay;if(!CAL.n||!CAL.rot){CAL.tx=tx;CAL.ty=ty}else{CAL.tx+=(tx-CAL.tx)*.35;CAL.ty+=(ty-CAL.ty)*.35}CAL.n++;CAL.rot=true}
+function mapPt(x,y){if(!CAL.rot)return[x,y];const[ax,ay]=rotA(x,y);return[ax+CAL.tx,ay+CAL.ty]}
+function zonesFit(){for(const side of['L','R']){const s=sticks[side],z=$('zone'+side);if(!z)continue;stickGeom(s);const R=Math.round(s.r*2.2);if(!(s.r>0)||!s.el.offsetParent){z.style.width='0px';continue}
+  z.style.left=Math.round(s.cx-R)+'px';z.style.top=Math.round(s.cy-R)+'px';z.style.width=z.style.height=R*2+'px'}}
 function touchVis(){const te=$('touch');if(!te)return;const on=S.mode==='play'&&(TOUCH_DEV||S.input.touch)&&!S.shopOpen&&$('phone').classList.contains('hidden');
   if(te.classList.contains('hidden')===on)te.classList.toggle('hidden',!on)}
 function stickGeom(s){const b=s.el.getBoundingClientRect();s.cx=b.left+b.width/2;s.cy=b.top+b.height/2;s.r=Math.max(30,b.width*.43)}
@@ -5327,19 +5343,20 @@ function stickMove(side,x,y){const s=sticks[side],I=S.input,dx=x-s.cx,dy=y-s.cy,
     if(up&&!I.jump)I.jumpEdge=true;I.jump=up;if(dn&&!I.down)I.downEdge=true;I.down=dn;
     const ax=Math.abs(sx),PC=CONFIG.player;I.runEdge=I.runEdge?ax>=PC.runOff:ax>=PC.runAt;s.el.classList.toggle('run',!!I.runEdge)}
   else{I.aimAng=Math.atan2(sy,sx);I.aimMag=mag;I.fire=mag>.72;s.el.classList.toggle('fire',I.fire)}}
+function stickFeed(side,x,y){const s=sticks[side];if(s.rel){const[dx,dy]=rotA(x-s.x0,y-s.y0);stickMove(side,s.cx+dx,s.cy+dy)}else stickMove(side,x,y)}
 function stickClear(side){const s=sticks[side],I=S.input;if(s.id===null)return;stickRelease(s);
   if(side==='L'){I.move=0;I.jump=false;I.down=false;I.runEdge=false}else{I.fire=false;I.aimMag=0}}
 const TC_SKIP='.tbtn,#pauseBtn,#strip,#shop,button,#bAct,#nokia,#phone,#pauseBar,#pickList,#perks,#perkMenu,#roundBox';
 // a finger lands: returns true when it was taken by a stick or the free aim (so the browser default is cancelled)
 function tcDown(id,x,y,target){S.input.touch=true;S.touchT=performance.now();
+  const zone=target&&target.closest?target.closest('.stZone'):null;if(target&&target.closest&&!zone){const b=target.closest('.tbtn,button');if(b)calibrate(x,y,b)}
   if(S.mode!=='play'||S.shopOpen||document.body.classList.contains('hudEditing'))return false;
-  if(target&&target.closest&&target.closest(TC_SKIP))return false;
-  let best=null,bd=1e9;for(const side of['L','R']){const s=sticks[side];stickGeom(s);const d=Math.hypot(x-s.cx,y-s.cy);if(d<s.r*2.2&&d<bd){bd=d;best=side}}
-  if(!best){const side=x<innerWidth*.5?'L':'R',s=sticks[side];stickGeom(s);
-    const far=s.id!==null||Math.hypot(x-s.cx,y-s.cy)>s.r*(side==='R'&&CONFIG.aim.free?CONFIG.aim.rStick:3.2);
-    if(far){if(CONFIG.aim.free&&!S.input.ptr){S.input.ptr={id,x,y};return true}return false}best=side}
-  const s=sticks[best];if(s.id!==null&&s.id!==id)stickClear(best);s.id=id;s.el.classList.add('on');stickMove(best,x,y);return true}
-function tcMove(id,x,y){const P_=S.input.ptr;if(P_&&P_.id===id){P_.x=x;P_.y=y}for(const side of['L','R'])if(sticks[side].id===id)stickMove(side,x,y)}
+  if(!zone&&target&&target.closest&&target.closest(TC_SKIP))return false;
+  if(zone){const side=zone.dataset.side,s=sticks[side];calibrate(x,y,zone);stickGeom(s);if(s.id!==null&&s.id!==id)stickClear(side);
+    s.id=id;s.rel=!!CAL.rot;s.x0=x;s.y0=y;s.el.classList.add('on');stickFeed(side,x,y);return true}
+  // anywhere else: free aim (points the gun, never fires)
+  if(CONFIG.aim.free&&!S.input.ptr){const[mx,my]=mapPt(x,y);S.input.ptr={id,x:mx,y:my};return true}return false}
+function tcMove(id,x,y){const P_=S.input.ptr;if(P_&&P_.id===id){const[mx,my]=mapPt(x,y);P_.x=mx;P_.y=my}for(const side of['L','R'])if(sticks[side].id===id)stickFeed(side,x,y)}
 function tcUp(id){const P_=S.input.ptr;if(P_&&P_.id===id)S.input.ptr=null;for(const side of['L','R'])if(sticks[side].id===id)stickClear(side)}
 function tcHeld(){return sticks.L.id!==null||sticks.R.id!==null||!!S.input.ptr}
 // keep only fingers that are really on the screen
@@ -5363,10 +5380,10 @@ addEventListener('pointermove',e=>{if((USE_TE&&e.pointerType==='touch')||!pTouch
 {const up=e=>{if((USE_TE&&e.pointerType==='touch')||!pTouch(e))return;tcUp('p'+e.pointerId)};addEventListener('pointerup',up);addEventListener('pointercancel',up)}
 // leaving the app / pausing releases everything
 addEventListener('blur',sticksReset);addEventListener('pagehide',sticksReset);document.addEventListener('visibilitychange',()=>{if(document.hidden)sticksReset()});
-setInterval(()=>{touchVis();if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))sticksReset()},250);
+setInterval(()=>{touchVis();zonesFit();if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))sticksReset()},250);
 // input diagnostics (open the link with #dbg)
 if(/qzdbg|#dbg/.test(location.href)){const d=document.createElement('pre');d.style.cssText='position:fixed;right:6px;top:40%;z-index:999;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;pointer-events:none;white-space:pre';document.body.append(d);
-  setInterval(()=>{const I=S.input;d.textContent='touchdev '+TOUCH_DEV+' te '+USE_TE+'\ntouch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' run '+!!I.runEdge+' fire '+!!I.fire+'\nmode '+S.mode+' layer '+($('touch').classList.contains('hidden')?'hidden':'visible')+'\nview '+innerWidth+'x'+innerHeight+(TC.err?'\nERR '+TC.err:'')},200)}
+  setInterval(()=>{const I=S.input;d.textContent='touchdev '+TOUCH_DEV+' te '+USE_TE+'\ntouch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' run '+!!I.runEdge+' fire '+!!I.fire+'\nmode '+S.mode+' layer '+($('touch').classList.contains('hidden')?'hidden':'visible')+'\ncoords '+(CAL.rot===null?'?':CAL.rot?'GIRADAS (corrigindo)':'ok')+' raw '+CAL.raw+' exp '+CAL.exp+'\nview '+innerWidth+'x'+innerHeight+(TC.err?'\nERR '+TC.err:'')},200)}
 const holdBtn=(id,on,off)=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();S.input.touch=true;b.classList.add('on');on()});
   const up=()=>{b.classList.remove('on');off&&off()};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up)};
 holdBtn('bReload',()=>S.input.reload=true);holdBtn('bNade',()=>S.input.nade=true);holdBtn('bSwap',()=>S.input.swap=true);holdBtn('bMelee',()=>S.input.melee=true);
