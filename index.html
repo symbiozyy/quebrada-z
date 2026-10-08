@@ -753,7 +753,7 @@ body.hudEditing #hud *{pointer-events:none!important}
   if(!matchMedia('(pointer:coarse)').matches||innerWidth>innerHeight)return;
   window.__qzOuter=1;var u=location.href.split('#')[0],q=function(v){return u+(u.indexOf('?')<0?'?':'&')+'qzrot='+v};
   document.write('<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}body>*:not(#qzRot):not(#qzProbe){display:none!important}#qzRot{position:fixed;left:0;top:0;border:0;transform-origin:0 0;background:#000;display:block}</style>');
-  addEventListener('DOMContentLoaded',function(){var f=document.createElement('iframe');f.id='qzRot';f.allow='fullscreen; autoplay; screen-wake-lock';f.setAttribute('allowfullscreen','');f.src=q(1);document.body.appendChild(f);
+  addEventListener('DOMContentLoaded',function(){var f=document.createElement('iframe');f.id='qzRot';f.allow='fullscreen; autoplay; screen-wake-lock';f.setAttribute('allowfullscreen','');f.src=q(1)+(/qzdbg|#dbg/.test(location.href)?'&qzdbg=1':'');document.body.appendChild(f);
     var pr=document.createElement('div');pr.id='qzProbe';pr.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';document.body.appendChild(pr);
     var dbg=/qzdbg|#dbg/.test(location.href),dv;if(dbg){dv=document.createElement('pre');dv.id='qzProbe';dv.style.cssText='position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;white-space:pre-wrap;max-width:90vw;pointer-events:none';document.body.appendChild(dv)}
     /* Margins: the phone's own insets when it reports them; when it does not (iOS often reports 0 for a home-screen app with a translucent
@@ -5300,7 +5300,7 @@ const sticks={L:{id:null,el:$('stickL'),cx:0,cy:0,r:50},R:{id:null,el:$('stickR'
 function stickGeom(s){const b=s.el.getBoundingClientRect();s.cx=b.left+b.width/2;s.cy=b.top+b.height/2;s.r=Math.max(30,b.width*.43)}
 function stickSet(s,x,y){const dx=x-s.cx,dy=y-s.cy,d=Math.hypot(dx,dy),r=s.r,k=d>r?r/d:1;s.el.querySelector('.knob').style.transform=`translate(${dx*k}px,${dy*k}px)`;return[dx/r*k,dy/r*k,Math.min(1,d/r)]}
 function stickRelease(s){s.id=null;s.el.classList.remove('on','fire','run');s.el.querySelector('.knob').style.transform=''}
-function onDown(e){if(e.pointerType==='touch')S.touchT=performance.now();if(S.mode!=='play'||e.pointerType==='mouse'||document.body.classList.contains('hudEditing'))return;S.input.touch=true;if(S.shopOpen||e.target.closest('.tbtn,#pauseBtn,#strip,#shop,button,#bAct,#nokia,#phone,#pauseBar'))return;
+function onDown(e){if(e.pointerType==='touch')S.touchT=performance.now();if(S.mode!=='play'||e.pointerType==='mouse'||document.body.classList.contains('hudEditing'))return;S.input.touch=true;if(S.shopOpen||e.target.closest('.tbtn,#pauseBtn,#strip,#shop,button,#bAct,#nokia,#phone,#pauseBar,#pickList,#perks,#perkMenu,#roundBox'))return;
   let best=null,bd=1e9;for(const side of['L','R']){const s=sticks[side];stickGeom(s);const d=Math.hypot(e.clientX-s.cx,e.clientY-s.cy);if(d<s.r*2.2&&d<bd){bd=d;best=side}}
   if(!best){const side=e.clientX<innerWidth*.5?'L':'R',s=sticks[side];stickGeom(s);const far=s.id!==null||Math.hypot(e.clientX-s.cx,e.clientY-s.cy)>s.r*(side==='R'&&CONFIG.aim.free?CONFIG.aim.rStick:3.2);
     // free aim: a finger anywhere else points the gun (it never shoots by itself)
@@ -5314,16 +5314,28 @@ function stickMove(side,x,y){const s=sticks[side],[sx,sy,mag]=stickSet(s,x,y),I=
 function onMove(e){{const P_=S.input.ptr;if(P_&&P_.id===e.pointerId){P_.x=e.clientX;P_.y=e.clientY}}for(const side of['L','R']){const s=sticks[side];if(s.id!==e.pointerId)continue;stickMove(side,e.clientX,e.clientY)}}
 function onUp(e){if(S.input.ptr&&S.input.ptr.id===e.pointerId)S.input.ptr=null;for(const side of['L','R']){const s=sticks[side];if(s.id!==e.pointerId)continue;stickRelease(s);const I=S.input;
   if(side==='L'){I.move=0;I.jump=false;I.down=false;I.runEdge=false}else{I.fire=false;I.aimMag=0}}}
-addEventListener('pointerdown',onDown,{passive:false});addEventListener('pointermove',onMove);addEventListener('pointerup',onUp);addEventListener('pointercancel',onUp);
-addEventListener('touchstart',e=>{S.input.touch=true;S.touchT=performance.now();stickSync(e)},{passive:true});
+// Fingers are read from TOUCH events (each finger has its own id for its whole life): on iPhone the pointer-event stream can be
+// cancelled or retargeted (inside frames, during system gestures) and the sticks stopped answering. Pointer events stay for mouse/pen.
+const HAS_TOUCH='ontouchstart' in window,TC={ts:0,tm:0,te:0,tx:0,pd:0,pc:0};
+// input diagnostics (open the link with #dbg): what the phone really sends
+if(/qzdbg|#dbg/.test(location.href)){const d=document.createElement('pre');d.style.cssText='position:fixed;right:6px;top:40%;z-index:999;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;pointer-events:none;white-space:pre';document.body.append(d);
+  addEventListener('pointercancel',()=>TC.pc++);setInterval(()=>{const I=S.input;d.textContent='touch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+' cancel '+TC.pc+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' fire '+!!I.fire+' mode '+S.mode+'\nview '+innerWidth+'x'+innerHeight},200)}
+addEventListener('pointerdown',e=>{TC.pd++;if(e.pointerType==='touch'&&HAS_TOUCH){S.touchT=performance.now();return}onDown(e)},{passive:false});
+addEventListener('pointermove',e=>{if(e.pointerType==='touch'&&HAS_TOUCH)return;onMove(e)});
+{const up=e=>{if(e.pointerType==='touch'&&HAS_TOUCH)return;onUp(e)};addEventListener('pointerup',up);addEventListener('pointercancel',up)}
+const tev=(t,e)=>({pointerId:'t'+t.identifier,pointerType:'touch',clientX:t.clientX,clientY:t.clientY,target:t.target&&t.target.closest?t.target:document.body,preventDefault(){if(e.cancelable)e.preventDefault()}});
+addEventListener('touchstart',e=>{TC.ts++;S.input.touch=true;S.touchT=performance.now();stickSync(e);for(const t of e.changedTouches)onDown(tev(t,e))},{passive:false});
+addEventListener('touchmove',e=>{TC.tm++;for(const t of e.changedTouches)onMove(tev(t,e));if(e.cancelable&&S.mode==='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))e.preventDefault()},{passive:false});
+{const end=e=>{e.type==='touchcancel'?TC.tx++:TC.te++;for(const t of e.changedTouches)onUp(tev(t,e));stickSync(e)};addEventListener('touchend',end,{passive:false});addEventListener('touchcancel',end,{passive:false})}
 // Safety net for lost touches (iOS can swallow pointerup/pointercancel on system gestures, notifications, edge swipes):
 // every touch event carries the list of fingers really on the screen; a stick or the aim finger with no finger near it is released.
 function stickFree(side){const s=sticks[side];if(s.id!==null)onUp({pointerId:s.id})}
-function stickSync(e){const T=e.touches;if(!T)return;const near=(x,y)=>{for(const t of T)if(Math.hypot(t.clientX-x,t.clientY-y)<110)return true;return false};
-  for(const side of['L','R']){const s=sticks[side];if(s.id!==null&&!near(s.lx,s.ly))stickFree(side)}
-  const P_=S.input.ptr;if(P_&&!near(P_.x,P_.y))S.input.ptr=null}
+function stickSync(e){const T=e.touches;if(!T)return;const ids=new Set();for(const t of T)ids.add('t'+t.identifier);
+  // touch-driven ids are checked exactly; anything else (pointer ids) by distance to a finger that is really on the screen
+  const near=(x,y,id)=>{if(typeof id==='string')return ids.has(id);for(const t of T)if(Math.hypot(t.clientX-x,t.clientY-y)<110)return true;return false};
+  for(const side of['L','R']){const s=sticks[side];if(s.id!==null&&!near(s.lx,s.ly,s.id))stickFree(side)}
+  const P_=S.input.ptr;if(P_&&!near(P_.x,P_.y,P_.id))S.input.ptr=null}
 function sticksReset(){stickFree('L');stickFree('R');S.input.ptr=null;S.input.move=0;S.input.fire=false}
-addEventListener('touchend',stickSync,{passive:true});addEventListener('touchcancel',stickSync,{passive:true});
 addEventListener('blur',sticksReset);addEventListener('pagehide',sticksReset);document.addEventListener('visibilitychange',()=>{if(document.hidden)sticksReset()});
 setInterval(()=>{if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null))sticksReset()},250);
 const holdBtn=(id,on,off)=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();S.input.touch=true;b.classList.add('on');on()});
