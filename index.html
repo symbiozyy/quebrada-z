@@ -4066,7 +4066,9 @@ function slabCut(c, R, x0, x1, col) {
   P.vgrad(c, x0, G0 + 6, w2, VH - G0 - 6, ["#221c1a", "#0c0a0a"]);
   for (let x = x0; x < x1; x += R.i(10, 26)) P.r(c, x, G0 + 9 + R.i(0, 18), R.i(3, 9), 1, "#2e2624");
 }
+const GROUND_X = {};
 function ground(c, R, x0, x1, kind) {
+  if (GROUND_X[kind]) return GROUND_X[kind](c, R, x0, x1);
   const w2 = x1 - x0;
   if (kind === "wave") {
     P.r(c, x0, WB, w2, G0 - WB, "#2b2a2c");
@@ -7045,6 +7047,7 @@ function genLevelZ(L) {
     mood: L.mood || {},
     grade: L.grade,
     ends: L.ends,
+    skyDraw: L.skyDraw,
     seed: L.seed,
     zoned: 1,
     rooms: [],
@@ -7212,6 +7215,8 @@ LEVELS[0] = {
   mood: {},
   npcs: [{ n: 3, skin: "marcao", zone: "adega", x: 520, up: 1, face: -1, lines: ["Segura a adega, Marcus!", "O churrasco queimou de novo...", "Tem fiado n\xE3o, nem pra zumbi."] }]
 };
+// ==== RIO MAPS (v25.17) ====
+/*@@RIO_MAPS@@*/
 const MAPS = LEVELS.map((L) => L.zones ? genLevelZ(L) : genLevel(L));
 let FOOT = null;
 const FOOT_H = {
@@ -7661,6 +7666,7 @@ function buildMap(mi) {
   sx.imageSmoothingQuality = "high";
   sx.drawImage(ARTIMG[per], 0, 0, 900, 506);
   sx.imageSmoothingEnabled = false;
+  if (m.skyDraw) m.skyDraw(sx, per, sc.width, sc.height, RNG(900 + mi));
   if (m.grade && per === "noite") {
     sx.globalCompositeOperation = m.grade.op || "multiply";
     sx.fillStyle = m.grade.c;
