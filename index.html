@@ -749,33 +749,6 @@ body.hudEditing #hud *{pointer-events:none!important}
 .qzFail{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;background:#0c0a12;color:#f4f0e4;font:600 15px/1.4 system-ui,-apple-system,sans-serif;text-align:center}.qzFail b{color:#ffd84a}.qzFail>b{font-size:26px;letter-spacing:2px}.qzFail small{color:#7a7288;font-size:11px;max-width:90vw;word-break:break-word}
 #a2hs{position:fixed;left:50%;bottom:calc(var(--sab) + 10px);transform:translateX(-50%);z-index:60;max-width:min(520px,92vw);display:flex;align-items:center;gap:10px;padding:8px 12px;background:#141118;border:2px solid #ffd84a;color:#f4f0e4;font:600 12px/1.35 system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.6)}#a2hs b{color:#ffd84a;font-family:var(--fy);font-weight:400;font-size:13px;white-space:nowrap}#a2hs i{color:#ffd84a;font-style:normal}#a2hs button{background:#e8862a;border:2px solid #000;font:700 12px system-ui;padding:5px 10px;color:#1a0d00}
 </style>
-<script>
-/* Phone held upright (or rotation locked): instead of asking to turn the phone, the game runs in a frame drawn already lying down.
-   Turning the phone makes it read normally; if the browser rotates by itself, the frame just un-rotates. */
-(function(){try{
-  if(/[?&]qzrot=/.test(location.search))return;
-  if(window.top!==window)return;
-  if(!matchMedia('(pointer:coarse)').matches||innerWidth>innerHeight)return;
-  window.__qzOuter=1;var u=location.href.split('#')[0],q=function(v){return u+(u.indexOf('?')<0?'?':'&')+'qzrot='+v};
-  document.write('<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}body>*:not(#qzRot):not(#qzProbe){display:none!important}#qzRot{position:fixed;left:0;top:0;border:0;transform-origin:0 0;background:#000;display:block}</style>');
-  addEventListener('DOMContentLoaded',function(){var f=document.createElement('iframe');f.id='qzRot';f.allow='fullscreen; autoplay; screen-wake-lock';f.setAttribute('allowfullscreen','');f.src=q(1)+(/qzdbg|#dbg/.test(location.href)?'&qzdbg=1':'');document.body.appendChild(f);
-    var pr=document.createElement('div');pr.id='qzProbe';pr.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';document.body.appendChild(pr);
-    var dbg=/qzdbg|#dbg/.test(location.href),dv;if(dbg){dv=document.createElement('pre');dv.id='qzProbe';dv.style.cssText='position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;white-space:pre-wrap;max-width:90vw;pointer-events:none';document.body.appendChild(dv)}
-    /* Margins: the phone's own insets when it reports them; when it does not (iOS often reports 0 for a home-screen app with a translucent
-       status bar) fixed minimums are used: the frame never starts under the clock/battery or ends under the home bar. */
-    function SF(){return{t:0,r:0,b:0,l:0}}try{localStorage.removeItem('qz_safe')}catch(e){}
-    function fit(){var vv=window.visualViewport,W=Math.round(vv&&vv.width||innerWidth),H=Math.round(vv&&vv.height||innerHeight),cs=getComputedStyle(pr),
-        pt=parseFloat(cs.paddingTop)||0,pR=parseFloat(cs.paddingRight)||0,pb=parseFloat(cs.paddingBottom)||0,pl=parseFloat(cs.paddingLeft)||0,
-        sa=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches,
-        ex=SF(),T=Math.max(pt,sa?50:0)+8+ex.l,B=Math.max(pb,sa?22:0)+8+ex.r,L=pl+12+ex.b,R=pR+12+ex.t,aw=W-L-R,ah=H-T-B;
-      if(W>H){f.style.width=W+'px';f.style.height=H+'px';f.style.transform='none'}else{f.style.width=ah+'px';f.style.height=aw+'px';f.style.transform='translate('+(L+aw)+'px,'+T+'px) rotate(90deg)'}
-      if(dv)dv.textContent='inner '+innerWidth+'x'+innerHeight+'\nvv '+W+'x'+H+'\nscreen '+screen.width+'x'+screen.height+'\nenv t'+pt+' r'+pR+' b'+pb+' l'+pl+'\nstandalone '+sa+'\nextra t'+ex.t+' b'+ex.b+' l'+ex.l+' r'+ex.r+'\nframe '+ah+'x'+aw+' T'+T+' B'+B+' L'+L+' R'+R}
-    fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);addEventListener('orientationchange',function(){setTimeout(fit,300)});
-    // the frame could not start the game here (blocked or broken): fall back to the normal page
-    var ok=false,ld=0;addEventListener('message',function(e){if(e.source===f.contentWindow&&e.data==='qz-boot'){ok=true;try{f.focus()}catch(x){}}});f.addEventListener('load',function(){ld=Date.now()});
-    var t0=Date.now(),chk=setInterval(function(){if(ok){clearInterval(chk);return}if((ld&&Date.now()-ld>8000)||Date.now()-t0>60000){clearInterval(chk);location.replace(q(0))}},1000)})
-}catch(e){}})();
-</script>
 </head>
 <body>
 <noscript><div class="qzFail"><b>QUEBRADA Z</b><p>Este visualizador não roda jogos (JavaScript desligado).</p><p>Abra o link do jogo no <b>Safari</b> ou no <b>Chrome</b>. Se recebeu o arquivo pelo WhatsApp/Arquivos, a pré-visualização do iPhone não roda o jogo.</p></div></noscript>
@@ -1017,8 +990,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
-const QZ_VERSION='25.13';
-if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
+const QZ_VERSION='25.14';
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
 // =====================================================================
