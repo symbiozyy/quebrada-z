@@ -26,6 +26,10 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 #game{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated;display:block;background:#000;will-change:transform}
 /* safe area: the phone's own insets (notch, status bar, home bar) + a comfort margin so nothing touches the edge */
 :root{--edge:16px;--edgeB:10px;--xt:0px;--xr:0px;--xb:0px;--xl:0px;--sat:calc(env(safe-area-inset-top) + var(--edge) + var(--xt));--sar:calc(env(safe-area-inset-right) + var(--edge) + var(--xr));--sab:calc(env(safe-area-inset-bottom) + var(--edgeB) + var(--xb));--sal:calc(env(safe-area-inset-left) + var(--edge) + var(--xl))}
+#qzVer{position:fixed;left:var(--sal);bottom:calc(var(--sab) + 2px);z-index:40;font:700 10px/1 var(--fs),monospace;color:rgba(255,255,255,.55);text-shadow:0 1px 0 #000;pointer-events:none}
+body.playing #qzVer{display:none}
+#qzUpd{position:fixed;left:50%;top:calc(var(--sat) + 4px);transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;background:#1f5a28;border:2px solid #7dff6a;border-radius:8px;color:#fff;font:700 12px/1.2 var(--fs),sans-serif;box-shadow:0 4px 0 rgba(0,0,0,.5)}
+#qzUpd.hidden{display:none}#qzUpd span{opacity:.85}#qzUpd button{font:800 13px/1 var(--fs),sans-serif;padding:8px 12px;background:#ffd84a;color:#1a0d00;border:2px solid #000;border-radius:6px;cursor:pointer}
 #safeGuide{position:fixed;left:var(--sal);right:var(--sar);top:var(--sat);bottom:var(--sab);border:2px dashed #ffd84a;border-radius:6px;pointer-events:none;z-index:60;display:none}
 body.safeSet #safeGuide{display:block}.safeRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 2px}.safeS{display:flex;align-items:center;gap:4px;background:#24202d;border:2px solid #000;padding:3px 6px;font-family:var(--fz)}.safeS span{min-width:2.6em;color:#9aa}.safeS b{min-width:2.2em;text-align:center;color:#ffd84a}.safeS button{width:28px;height:28px;font-size:16px;background:#3a3446;color:#fff;border:2px solid #000;cursor:pointer;padding:0}
 :root{--strip:calc(54px + var(--sab))}
@@ -939,6 +943,8 @@ body.hudEditing #hud *{pointer-events:none!important}
 </div>
 
 <div id="safeGuide"></div>
+<div id="qzVer"></div>
+<div id="qzUpd" class="hidden"><b>VERSÃO NOVA DISPONÍVEL</b><span id="qzUpdTx"></span><button id="qzUpdGo">ATUALIZAR AGORA</button></div>
 <div id="settings" class="screen shadeFull hidden">
   <div class="panel wide" style="text-align:center">
     <h3 class="yo">AJUSTES</h3>
@@ -986,7 +992,7 @@ body.hudEditing #hud *{pointer-events:none!important}
 <div id="pause" class="screen shadeFull hidden">
   <div class="panel" style="max-width:360px;text-align:center">
     <h3 class="yo">PAUSA</h3>
-    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn yo" id="bResume">VOLTAR</button><button class="btn alt yo" id="bHelp2">AJUDA</button><button class="btn alt yo" id="bSet2">AJUSTES</button><button class="btn alt" id="bHudEd2">HUD</button><button class="btn alt yo" id="bQuit">SAIR</button></div>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn yo" id="bResume">VOLTAR</button><button class="btn alt yo" id="bHelp2">AJUDA</button><button class="btn alt yo" id="bSet2">AJUSTES</button><button class="btn alt" id="bHudEd2">HUD</button><button class="btn alt yo" id="bQuit">SAIR</button><p style="opacity:.5;font-size:11px;margin-top:6px" id="pauseVer"></p></div>
   </div>
 </div>
 
@@ -1013,6 +1019,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
+const QZ_VERSION='25.9';
 if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
@@ -5489,6 +5496,13 @@ $('lExit').onclick=e=>{e.stopPropagation();S.lab=0;S.slow=0;CONFIG.decals=true;$
 $('bLab').onclick=()=>{SFX.init();SFX.resume();startLab()};
 if(location.hash==='#lab'||location.search.includes('lab'))setTimeout(()=>{if(assetsReady)startLab()},1500);
 
+// ---- version label + update check: phones keep old copies of the page; this tells the player and reloads the newest ----
+$('pauseVer').textContent='versão '+QZ_VERSION;$('qzVer').textContent='v'+QZ_VERSION+(TOUCH_DEV?' · touch':'');
+function qzReload(v){const w=(()=>{try{return window.top.location.href&&window.top}catch(e){return window}})(),u=w.location.href.split('#')[0].replace(/([?&])v=[^&]*&?/,'$1').replace(/[?&]$/,'');w.location.replace(u+(u.indexOf('?')<0?'?':'&')+'v='+v+'&t='+Date.now())}
+function qzCheckUpdate(){if(!/^https?:/.test(location.protocol)||/[?&]qzrot=1/.test(location.search)&&false)return;
+  fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=/QZ_VERSION='([\d.]+)'/.exec(t);if(!m||m[1]===QZ_VERSION)return;
+    $('qzUpdTx').textContent='v'+QZ_VERSION+' → v'+m[1];$('qzUpd').classList.remove('hidden');$('qzUpdGo').onclick=()=>qzReload(m[1])}).catch(()=>{})}
+if(window.top===window||/[?&]qzrot=1/.test(location.search)){setTimeout(qzCheckUpdate,1500);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.mode!=='play')qzCheckUpdate()})}
 window.__qzBoot=1;try{if(parent!==window)parent.postMessage('qz-boot','*')}catch(e){}
 
 // ---------- fullscreen: browsers only allow it from a tap, so the very first touch on the title screen asks for it ----------
