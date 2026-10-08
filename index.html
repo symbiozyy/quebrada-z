@@ -1017,7 +1017,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
-const QZ_VERSION='25.11';
+const QZ_VERSION='25.12';
 if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
@@ -5325,7 +5325,7 @@ function calibrate(x,y,el){if(!el||!el.getBoundingClientRect)return;const r=el.g
   if(x>=r.left-6&&x<=r.right+6&&y>=r.top-6&&y<=r.bottom+6){CAL.rot=false;return}
   const[ax,ay]=rotA(x,y),tx=r.left+r.width/2-ax,ty=r.top+r.height/2-ay;if(!CAL.n||!CAL.rot){CAL.tx=tx;CAL.ty=ty}else{CAL.tx+=(tx-CAL.tx)*.35;CAL.ty+=(ty-CAL.ty)*.35}CAL.n++;CAL.rot=true}
 function mapPt(x,y){if(!CAL.rot)return[x,y];const[ax,ay]=rotA(x,y);return[ax+CAL.tx,ay+CAL.ty]}
-function zonesFit(){for(const side of['L','R']){const s=sticks[side],z=$('zone'+side);if(!z)continue;stickGeom(s);const R=Math.round(s.r*2.2);if(!(s.r>0)||!s.el.offsetParent){z.style.width='0px';continue}
+function zonesFit(){for(const side of['L','R']){const s=sticks[side],z=$('zone'+side);if(!z)continue;stickGeom(s);const R=Math.round(s.r*2.2),vis=s.el.getBoundingClientRect().width>0&&getComputedStyle(s.el).display!=='none';if(!vis){z.style.width='0px';continue}
   z.style.left=Math.round(s.cx-R)+'px';z.style.top=Math.round(s.cy-R)+'px';z.style.width=z.style.height=R*2+'px'}}
 function touchVis(){const te=$('touch');if(!te)return;const on=S.mode==='play'&&(TOUCH_DEV||S.input.touch)&&!S.shopOpen&&$('phone').classList.contains('hidden');
   if(te.classList.contains('hidden')===on)te.classList.toggle('hidden',!on)}
@@ -5404,7 +5404,10 @@ const TOUCH_IDS=['stickL','stickR','bJump','bKick','bDodge','bReload','bSwap','b
 function fxReduced(){return REDUCED.matches||!!SAVE.d.redFx}
 const HUDL={
   PRESETS:['Padrão','Canhoto','Compacto'],
-  data(){const D=SAVE.d;if(!D.hud||!D.hud.layouts)D.hud={active:'Padrão',layouts:{}};return D.hud},
+  data(){const D=SAVE.d;if(!D.hud||!D.hud.layouts)D.hud={active:'Padrão',layouts:{}};const H=D.hud;
+    // v25.12: a saved layout (also coming back from the cloud save) had moved the move-stick to a broken spot: sticks back to default once
+    if(!H.stickFix){for(const n in H.layouts){const L=H.layouts[n];if(L&&L.els){delete L.els.stickL;delete L.els.stickR}}H.stickFix=1;try{SAVE.save()}catch(e){}}
+    return H},
   isPreset(n){return this.PRESETS.includes(n)},
   names(){return[...this.PRESETS,...Object.keys(this.data().layouts)]},
   get(n){const H=this.data();return H.layouts[n]?JSON.parse(JSON.stringify(H.layouts[n])):this.preset(n)},
@@ -5424,10 +5427,13 @@ const HUDL={
       return{bar:0,els}}
     return{bar:1,els:{}}},
   applyOne(id,v){const e=this.el(id);if(!e)return;const st=e.style,imp='important';
-    st.setProperty('position','fixed',imp);st.setProperty('left',(v.x*100).toFixed(2)+'vw',imp);st.setProperty('top',(v.y*100).toFixed(2)+'vh',imp);
+    st.setProperty('position','fixed',imp);st.setProperty('left',Math.round(v.x*innerWidth)+'px',imp);st.setProperty('top',Math.round(v.y*innerHeight)+'px',imp);
     st.setProperty('right','auto',imp);st.setProperty('bottom','auto',imp);st.setProperty('margin','0',imp);
     st.setProperty('transform',`translate(-50%,-50%) scale(${v.s||1})`,imp);st.setProperty('opacity',String(v.o??1),imp)},
+  reapply(){const L=this.get(this.data().active);for(const id in L.els)this.applyOne(id,L.els[id]);setTimeout(()=>{try{zonesFit()}catch(e){}},30)},
   apply(L){this.clear();L=L||this.get(this.data().active);document.body.classList.toggle('noBar',!L.bar);for(const id in L.els)this.applyOne(id,L.els[id]);if(S.mode==='play'||S.mode==='pause')resize()}};
+try{HUDL.data()}catch(e){}
+addEventListener('resize',()=>{try{if(Object.keys(HUDL.get(HUDL.data().active).els||{}).length)HUDL.reapply()}catch(e){}});
 const HUDE={
   open(back){this.back=back;this.mode0=S.mode;const H=HUDL.data();this.name=H.active;this.cur=HUDL.get(this.name);this.sel=null;this.dirty=0;
     UI.show(null);if(S.mode!=='play'&&S.mode!=='pause'){try{render()}catch(e){}}this.undo=HUDL.forceShow();$('hudEdit').classList.remove('hidden');
