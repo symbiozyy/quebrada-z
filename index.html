@@ -4948,7 +4948,7 @@ const UI={
       for(const g of list){const b=document.createElement('button');b.className='pkC'+(g===it.sel?' sel':'');b.style.setProperty('--rk',RANKS[g.rk].c);const st=wst(g);
         b.innerHTML=`<canvas></canvas><b>${WEAP[g.id].name}</b><small>${RANKS[g.rk].n} · ${g.mag??st.mag}/${g.res??st.res}</small>`;paintIcon(b.querySelector('canvas'),g.id,52,20);
         b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();S.input.touch=true;takeItem(g)});el.append(b)}}}
-    const showTouch=S.input.touch&&!S.shopOpen;if(showTouch!==L.touch){$('touch').classList.toggle('hidden',!showTouch);L.touch=showTouch}
+    const showTouch=S.input.touch&&!S.shopOpen,te=$('touch');if(te.classList.contains('hidden')===showTouch){te.classList.toggle('hidden',!showTouch);L.touch=showTouch}
     if(S.shopOpen)UI.shopTick();UI.nokia();
     // pause bar (top right): open shop / start the round early
     const pb=S.buyPhase.active&&!S.shopOpen&&!S.wait&&!UI.shutterBusy,left=Math.max(0,Math.ceil(S.buyPhase.duration-S.buyPhase.t)),pk=pb+':'+left;
@@ -5319,18 +5319,19 @@ function onUp(e){if(S.input.ptr&&S.input.ptr.id===e.pointerId)S.input.ptr=null;f
 const HAS_TOUCH='ontouchstart' in window,TC={ts:0,tm:0,te:0,tx:0,pd:0,pc:0};
 // input diagnostics (open the link with #dbg): what the phone really sends
 if(/qzdbg|#dbg/.test(location.href)){const d=document.createElement('pre');d.style.cssText='position:fixed;right:6px;top:40%;z-index:999;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;pointer-events:none;white-space:pre';document.body.append(d);
-  addEventListener('pointercancel',()=>TC.pc++);setInterval(()=>{const I=S.input;d.textContent='touch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+' cancel '+TC.pc+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' fire '+!!I.fire+' mode '+S.mode+'\nview '+innerWidth+'x'+innerHeight},200)}
-addEventListener('pointerdown',e=>{TC.pd++;if(e.pointerType==='touch'&&HAS_TOUCH){S.touchT=performance.now();return}onDown(e)},{passive:false});
+  addEventListener('pointercancel',()=>TC.pc++);setInterval(()=>{const I=S.input;d.textContent='touch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+' cancel '+TC.pc+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' fire '+!!I.fire+' mode '+S.mode+'\nview '+innerWidth+'x'+innerHeight+(TC.err?'\nERR '+TC.err:'')},200)}
+addEventListener('pointerdown',e=>{TC.pd++;if(e.pointerType==='touch'&&HAS_TOUCH){S.touchT=performance.now();if(S.mode==='play')S.input.touch=true;return}onDown(e)},{passive:false});
 addEventListener('pointermove',e=>{if(e.pointerType==='touch'&&HAS_TOUCH)return;onMove(e)});
 {const up=e=>{if(e.pointerType==='touch'&&HAS_TOUCH)return;onUp(e)};addEventListener('pointerup',up);addEventListener('pointercancel',up)}
+const TL=l=>{const a=[];if(l)for(let i=0;i<l.length;i++)a.push(l[i]);return a};
 const tev=(t,e)=>({pointerId:'t'+t.identifier,pointerType:'touch',clientX:t.clientX,clientY:t.clientY,target:t.target&&t.target.closest?t.target:document.body,preventDefault(){if(e.cancelable)e.preventDefault()}});
-addEventListener('touchstart',e=>{TC.ts++;S.input.touch=true;S.touchT=performance.now();stickSync(e);for(const t of e.changedTouches)onDown(tev(t,e))},{passive:false});
-addEventListener('touchmove',e=>{TC.tm++;for(const t of e.changedTouches)onMove(tev(t,e));if(e.cancelable&&S.mode==='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))e.preventDefault()},{passive:false});
-{const end=e=>{e.type==='touchcancel'?TC.tx++:TC.te++;for(const t of e.changedTouches)onUp(tev(t,e));stickSync(e)};addEventListener('touchend',end,{passive:false});addEventListener('touchcancel',end,{passive:false})}
+addEventListener('touchstart',e=>{TC.ts++;S.input.touch=true;S.touchT=performance.now();try{stickSync(e)}catch(x){}try{for(const t of TL(e.changedTouches))onDown(tev(t,e))}catch(x){TC.err=String(x)}},{passive:false});
+addEventListener('touchmove',e=>{TC.tm++;try{for(const t of TL(e.changedTouches))onMove(tev(t,e))}catch(x){TC.err=String(x)}if(e.cancelable&&S.mode==='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))e.preventDefault()},{passive:false});
+{const end=e=>{e.type==='touchcancel'?TC.tx++:TC.te++;try{for(const t of TL(e.changedTouches))onUp(tev(t,e))}catch(x){TC.err=String(x)}try{stickSync(e)}catch(x){}};addEventListener('touchend',end,{passive:false});addEventListener('touchcancel',end,{passive:false})}
 // Safety net for lost touches (iOS can swallow pointerup/pointercancel on system gestures, notifications, edge swipes):
 // every touch event carries the list of fingers really on the screen; a stick or the aim finger with no finger near it is released.
 function stickFree(side){const s=sticks[side];if(s.id!==null)onUp({pointerId:s.id})}
-function stickSync(e){const T=e.touches;if(!T)return;const ids=new Set();for(const t of T)ids.add('t'+t.identifier);
+function stickSync(e){if(!e.touches)return;const T=TL(e.touches);const ids=new Set();for(const t of T)ids.add('t'+t.identifier);
   // touch-driven ids are checked exactly; anything else (pointer ids) by distance to a finger that is really on the screen
   const near=(x,y,id)=>{if(typeof id==='string')return ids.has(id);for(const t of T)if(Math.hypot(t.clientX-x,t.clientY-y)<110)return true;return false};
   for(const side of['L','R']){const s=sticks[side];if(s.id!==null&&!near(s.lx,s.ly,s.id))stickFree(side)}
