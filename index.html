@@ -28,8 +28,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 :root{--edge:16px;--edgeB:10px;--xt:0px;--xr:0px;--xb:0px;--xl:0px;--sat:calc(env(safe-area-inset-top) + var(--edge) + var(--xt));--sar:calc(env(safe-area-inset-right) + var(--edge) + var(--xr));--sab:calc(env(safe-area-inset-bottom) + var(--edgeB) + var(--xb));--sal:calc(env(safe-area-inset-left) + var(--edge) + var(--xl))}
 #qzVer{position:fixed;left:var(--sal);bottom:calc(var(--sab) + 2px);z-index:40;font:700 10px/1 var(--fs),monospace;color:rgba(255,255,255,.55);text-shadow:0 1px 0 #000;pointer-events:none}
 body.playing #qzVer{display:none}
-#qzDiag{position:fixed;left:50%;top:calc(var(--sat) + 52px);transform:translateX(-50%);z-index:45;font:600 9px/1.25 monospace;color:#7dff6a;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px;pointer-events:none;white-space:pre;display:none}
-body.playing #qzDiag{display:block}
+
 #qzUpd{position:fixed;left:50%;top:calc(var(--sat) + 4px);transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;background:#1f5a28;border:2px solid #7dff6a;border-radius:8px;color:#fff;font:700 12px/1.2 var(--fs),sans-serif;box-shadow:0 4px 0 rgba(0,0,0,.5)}
 #qzUpd.hidden{display:none}#qzUpd span{opacity:.85}#qzUpd button{font:800 13px/1 var(--fs),sans-serif;padding:8px 12px;background:#ffd84a;color:#1a0d00;border:2px solid #000;border-radius:6px;cursor:pointer}
 :root{--strip:calc(54px + var(--sab))}
@@ -917,7 +916,6 @@ body.hudEditing #hud *{pointer-events:none!important}
 </div>
 
 <div id="qzVer"></div>
-<div id="qzDiag"></div>
 <div id="qzUpd" class="hidden"><b>VERSÃO NOVA DISPONÍVEL</b><span id="qzUpdTx"></span><button id="qzUpdGo">ATUALIZAR AGORA</button></div>
 <div id="settings" class="screen shadeFull hidden">
   <div class="panel wide" style="text-align:center">
@@ -990,7 +988,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
-const QZ_VERSION='25.14';
+const QZ_VERSION='25.15';
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
 // =====================================================================
@@ -5356,10 +5354,6 @@ addEventListener('pointermove',e=>{if((USE_TE&&e.pointerType==='touch')||!pTouch
 // leaving the app / pausing releases everything
 addEventListener('blur',sticksReset);addEventListener('pagehide',sticksReset);document.addEventListener('visibilitychange',()=>{if(document.hidden)sticksReset()});
 setInterval(()=>{touchVis();zonesFit();if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))sticksReset()},250);
-// one-line touch diagnostics shown during the match (temporary, to find what the phone really sends)
-setInterval(()=>{const d=$('qzDiag');if(!d||S.mode!=='play')return;const zl=$('zoneL').getBoundingClientRect(),sl=sticks.L;
-  d.textContent='v'+QZ_VERSION+' toque '+TC.ts+'/'+TC.tm+'/'+TC.te+(TC.tx?' cancel '+TC.tx:'')+' ptr '+TC.pd+' | alvo '+(TC.tg||'-')+' @'+(TC.xy||'-')+' | L '+(sl.id||'-')+(sl.id?(sl.rel?' rel':' abs'):'')+' mov '+(+S.input.move||0).toFixed(1)+
-    '\nzonaL '+Math.round(zl.left)+','+Math.round(zl.top)+' '+Math.round(zl.width)+' | coords '+(CAL.rot===null?'?':CAL.rot?'giradas':'ok')+' | tela '+innerWidth+'x'+innerHeight+(TC.err?' | ERR '+TC.err.slice(0,60):'')},300);
 // input diagnostics (open the link with #dbg)
 if(/qzdbg|#dbg/.test(location.href)){const d=document.createElement('pre');d.style.cssText='position:fixed;right:6px;top:40%;z-index:999;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;pointer-events:none;white-space:pre';document.body.append(d);
   setInterval(()=>{const I=S.input;d.textContent='touchdev '+TOUCH_DEV+' te '+USE_TE+'\ntouch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' run '+!!I.runEdge+' fire '+!!I.fire+'\nmode '+S.mode+' layer '+($('touch').classList.contains('hidden')?'hidden':'visible')+'\ncoords '+(CAL.rot===null?'?':CAL.rot?'GIRADAS (corrigindo)':'ok')+' raw '+CAL.raw+' exp '+CAL.exp+'\nview '+innerWidth+'x'+innerHeight+(TC.err?'\nERR '+TC.err:'')},200)}
