@@ -28,10 +28,10 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 :root{--edge:16px;--edgeB:10px;--xt:0px;--xr:0px;--xb:0px;--xl:0px;--sat:calc(env(safe-area-inset-top) + var(--edge) + var(--xt));--sar:calc(env(safe-area-inset-right) + var(--edge) + var(--xr));--sab:calc(env(safe-area-inset-bottom) + var(--edgeB) + var(--xb));--sal:calc(env(safe-area-inset-left) + var(--edge) + var(--xl))}
 #qzVer{position:fixed;left:var(--sal);bottom:calc(var(--sab) + 2px);z-index:40;font:700 10px/1 var(--fs),monospace;color:rgba(255,255,255,.55);text-shadow:0 1px 0 #000;pointer-events:none}
 body.playing #qzVer{display:none}
+#qzDiag{position:fixed;left:50%;top:calc(var(--sat) + 52px);transform:translateX(-50%);z-index:45;font:600 9px/1.25 monospace;color:#7dff6a;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px;pointer-events:none;white-space:pre;display:none}
+body.playing #qzDiag{display:block}
 #qzUpd{position:fixed;left:50%;top:calc(var(--sat) + 4px);transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;background:#1f5a28;border:2px solid #7dff6a;border-radius:8px;color:#fff;font:700 12px/1.2 var(--fs),sans-serif;box-shadow:0 4px 0 rgba(0,0,0,.5)}
 #qzUpd.hidden{display:none}#qzUpd span{opacity:.85}#qzUpd button{font:800 13px/1 var(--fs),sans-serif;padding:8px 12px;background:#ffd84a;color:#1a0d00;border:2px solid #000;border-radius:6px;cursor:pointer}
-#safeGuide{position:fixed;left:var(--sal);right:var(--sar);top:var(--sat);bottom:var(--sab);border:2px dashed #ffd84a;border-radius:6px;pointer-events:none;z-index:60;display:none}
-body.safeSet #safeGuide{display:block}.safeRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 2px}.safeS{display:flex;align-items:center;gap:4px;background:#24202d;border:2px solid #000;padding:3px 6px;font-family:var(--fz)}.safeS span{min-width:2.6em;color:#9aa}.safeS b{min-width:2.2em;text-align:center;color:#ffd84a}.safeS button{width:28px;height:28px;font-size:16px;background:#3a3446;color:#fff;border:2px solid #000;cursor:pointer;padding:0}
 :root{--strip:calc(54px + var(--sab))}
 body.playing #gameWrap{height:calc(100% - var(--strip))}
 .layer{position:fixed;inset:0;pointer-events:none}
@@ -763,8 +763,7 @@ body.hudEditing #hud *{pointer-events:none!important}
     var dbg=/qzdbg|#dbg/.test(location.href),dv;if(dbg){dv=document.createElement('pre');dv.id='qzProbe';dv.style.cssText='position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;white-space:pre-wrap;max-width:90vw;pointer-events:none';document.body.appendChild(dv)}
     /* Margins: the phone's own insets when it reports them; when it does not (iOS often reports 0 for a home-screen app with a translucent
        status bar) fixed minimums are used: the frame never starts under the clock/battery or ends under the home bar. */
-    var SX=null;function SF(){if(!SX){try{SX=JSON.parse(localStorage.getItem('qz_safe')||'{}')}catch(e){SX={}}}return{t:+SX.t||0,r:+SX.r||0,b:+SX.b||0,l:+SX.l||0}}
-    addEventListener('message',function(e){if(e.source===f.contentWindow&&e.data&&e.data.qzSafe){SX=e.data.qzSafe;fit()}});
+    function SF(){return{t:0,r:0,b:0,l:0}}try{localStorage.removeItem('qz_safe')}catch(e){}
     function fit(){var vv=window.visualViewport,W=Math.round(vv&&vv.width||innerWidth),H=Math.round(vv&&vv.height||innerHeight),cs=getComputedStyle(pr),
         pt=parseFloat(cs.paddingTop)||0,pR=parseFloat(cs.paddingRight)||0,pb=parseFloat(cs.paddingBottom)||0,pl=parseFloat(cs.paddingLeft)||0,
         sa=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches,
@@ -944,15 +943,12 @@ body.hudEditing #hud *{pointer-events:none!important}
   </div>
 </div>
 
-<div id="safeGuide"></div>
 <div id="qzVer"></div>
+<div id="qzDiag"></div>
 <div id="qzUpd" class="hidden"><b>VERSÃO NOVA DISPONÍVEL</b><span id="qzUpdTx"></span><button id="qzUpdGo">ATUALIZAR AGORA</button></div>
 <div id="settings" class="screen shadeFull hidden">
   <div class="panel wide" style="text-align:center">
     <h3 class="yo">AJUSTES</h3>
-    <p style="margin:6px 0 2px">Zona segura (margem extra nas bordas, em pontos)</p>
-    <div class="safeRow" id="safeRow"></div><p class="segNote" style="min-height:0;margin:2px 0 4px">A linha amarela tracejada mostra a área segura. Aumente o lado que estiver cortado.</p>
-    <div class="row" style="justify-content:center;margin:2px 0"><button class="btn alt" id="safeReset">Automático</button></div>
     <p style="margin:6px 0 8px">Intensidade do sangue</p>
     <div class="seg" id="goreSeg"><button data-v="off">Desligado</button><button data-v="normal">Normal</button><button data-v="max">Máximo</button></div>
     <p class="segNote" id="goreNote"></p>
@@ -1021,7 +1017,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
-const QZ_VERSION='25.10';
+const QZ_VERSION='25.11';
 if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
@@ -5366,7 +5362,7 @@ function sticksReset(){stickClear('L');stickClear('R');S.input.ptr=null;S.input.
 const tList=l=>{const a=[];if(l)for(let i=0;i<l.length;i++)a.push(l[i]);return a};
 const tAlive=e=>{const set=new Set();for(const t of tList(e.touches))set.add('t'+t.identifier);return set};
 if(USE_TE){
-  addEventListener('touchstart',e=>{TC.ts++;S.input.touch=true;S.touchT=performance.now();let took=false;
+  addEventListener('touchstart',e=>{TC.ts++;try{const t0=e.changedTouches[0];TC.tg=(t0.target.id||t0.target.className||t0.target.tagName||'?')+'';TC.xy=Math.round(t0.clientX)+','+Math.round(t0.clientY)}catch(x){}S.input.touch=true;S.touchT=performance.now();let took=false;
     try{tcSync(tAlive(e));for(const t of tList(e.changedTouches))if(tcDown('t'+t.identifier,t.clientX,t.clientY,t.target))took=true}catch(x){TC.err=String(x)}
     if(took&&e.cancelable)e.preventDefault()},{passive:false});
   addEventListener('touchmove',e=>{TC.tm++;try{for(const t of tList(e.changedTouches))tcMove('t'+t.identifier,t.clientX,t.clientY)}catch(x){TC.err=String(x)}
@@ -5381,6 +5377,10 @@ addEventListener('pointermove',e=>{if((USE_TE&&e.pointerType==='touch')||!pTouch
 // leaving the app / pausing releases everything
 addEventListener('blur',sticksReset);addEventListener('pagehide',sticksReset);document.addEventListener('visibilitychange',()=>{if(document.hidden)sticksReset()});
 setInterval(()=>{touchVis();zonesFit();if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))sticksReset()},250);
+// one-line touch diagnostics shown during the match (temporary, to find what the phone really sends)
+setInterval(()=>{const d=$('qzDiag');if(!d||S.mode!=='play')return;const zl=$('zoneL').getBoundingClientRect(),sl=sticks.L;
+  d.textContent='v'+QZ_VERSION+' toque '+TC.ts+'/'+TC.tm+'/'+TC.te+(TC.tx?' cancel '+TC.tx:'')+' ptr '+TC.pd+' | alvo '+(TC.tg||'-')+' @'+(TC.xy||'-')+' | L '+(sl.id||'-')+' mov '+(+S.input.move||0).toFixed(1)+
+    '\nzonaL '+Math.round(zl.left)+','+Math.round(zl.top)+' '+Math.round(zl.width)+' | coords '+(CAL.rot===null?'?':CAL.rot?'giradas':'ok')+' | tela '+innerWidth+'x'+innerHeight+(TC.err?' | ERR '+TC.err.slice(0,60):'')},300);
 // input diagnostics (open the link with #dbg)
 if(/qzdbg|#dbg/.test(location.href)){const d=document.createElement('pre');d.style.cssText='position:fixed;right:6px;top:40%;z-index:999;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;pointer-events:none;white-space:pre';document.body.append(d);
   setInterval(()=>{const I=S.input;d.textContent='touchdev '+TOUCH_DEV+' te '+USE_TE+'\ntouch start '+TC.ts+' move '+TC.tm+' end '+TC.te+' cancel '+TC.tx+'\npointer down '+TC.pd+'\nL '+sticks.L.id+' R '+sticks.R.id+' aim '+(I.ptr?I.ptr.id:'-')+'\nmove '+(+I.move||0).toFixed(2)+' run '+!!I.runEdge+' fire '+!!I.fire+'\nmode '+S.mode+' layer '+($('touch').classList.contains('hidden')?'hidden':'visible')+'\ncoords '+(CAL.rot===null?'?':CAL.rot?'GIRADAS (corrigindo)':'ok')+' raw '+CAL.raw+' exp '+CAL.exp+'\nview '+innerWidth+'x'+innerHeight+(TC.err?'\nERR '+TC.err:'')},200)}
@@ -5483,18 +5483,8 @@ const GORE_NOTES={off:'Sem sangue: tiros soltam faíscas e os zumbis viram fuma�
 function setGore(v){CONFIG.gore=v;SAVE.d.gore=v;SAVE.save();for(const b of document.querySelectorAll('#goreSeg button'))b.classList.toggle('on',b.dataset.v===v);$('goreNote').textContent=GORE_NOTES[v];const lg=$('lGore');if(lg)lg.textContent='SANGUE: '+{off:'DESLIGADO',normal:'NORMAL',max:'MÁXIMO'}[v]}
 for(const b of document.querySelectorAll('#goreSeg button'))b.onclick=()=>{setGore(b.dataset.v);SFX.swap()};
 setGore(CONFIG.gore);
-// ---- safe zone: extra margin per side (device-local, on top of the automatic one). Sides are as seen with the phone lying down. ----
-const SAFE={k:'qz_safe',d:{t:0,r:0,b:0,l:0},rot:/[?&]qzrot=1/.test(location.search),
-  load(){try{Object.assign(this.d,JSON.parse(localStorage.getItem(this.k)||'{}'))}catch(e){}},
-  apply(){const r=document.documentElement.style,d=this.rot?{t:0,r:0,b:0,l:0}:this.d;for(const k in d)r.setProperty('--x'+k,d[k]+'px');
-    // the rotated frame (parent page) owns the margins in portrait mode: tell it
-    try{if(this.rot)parent.postMessage({qzSafe:this.d},'*')}catch(e){}},
-  set(k,v){this.d[k]=clamp(Math.round(v),-16,96);try{localStorage.setItem(this.k,JSON.stringify(this.d))}catch(e){}this.apply();this.ui()},
-  ui(){for(const k in this.d){const b=document.querySelector('#safeRow [data-k="'+k+'"] b');if(b)b.textContent=this.d[k]}},
-  build(){const N={t:'CIMA',b:'BAIXO',l:'ESQ',r:'DIR'},row=$('safeRow');row.innerHTML='';for(const k of['t','b','l','r']){const d=document.createElement('div');d.className='safeS';d.dataset.k=k;d.innerHTML='<span>'+N[k]+'</span><button>−</button><b>0</b><button>+</button>';
-      const[m,p]=d.querySelectorAll('button');m.onclick=()=>{this.set(k,this.d[k]-4);SFX.swap()};p.onclick=()=>{this.set(k,this.d[k]+4);SFX.swap()};row.append(d)}this.ui()}};
-SAFE.load();SAFE.build();SAFE.apply();$('safeReset').onclick=()=>{SAFE.d={t:0,r:0,b:0,l:0};try{localStorage.removeItem(SAFE.k)}catch(e){}SAFE.apply();SAFE.ui();SFX.swap()};
-let setBack='title';const setOpen=on=>document.body.classList.toggle('safeSet',on);$('bSet').onclick=()=>{setBack='title';setOpen(1);UI.show('settings')};$('bSet2').onclick=()=>{setBack='pause';setOpen(1);UI.show('settings')};$('bSetOk').onclick=()=>{setOpen(0);UI.show(setBack)};
+try{localStorage.removeItem('qz_safe')}catch(e){}
+let setBack='title';$('bSet').onclick=()=>{setBack='title';UI.show('settings')};$('bSet2').onclick=()=>{setBack='pause';UI.show('settings')};$('bSetOk').onclick=()=>UI.show(setBack);
 // ---------- LAB DO SANGUE: one standing zombie on each side, every weapon, decal / slow motion toggles ----------
 function startLab(){S.mi=0;S.ci=0;S.matchSeed=0;startGame();S.lab=1;S.labKill=0;S.slow=0;CONFIG.decals=true;S.shopOpen=false;$('shop').classList.add('hidden');$('pauseBar').classList.add('hidden');
   S.buyPhase.active=false;S.wait=1;S.round=6;$('banner').innerHTML='';const p=S.player;p.cash=0;giveWeapon('pistol','gold');p.swapT=0;$('labPanel').classList.remove('hidden');labSpawn(-1);labSpawn(1);labSync()}
