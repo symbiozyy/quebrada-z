@@ -22,9 +22,10 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font-family:var(--fz);
   touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#game{position:fixed;left:0;top:0;width:100%;height:100%;image-rendering:pixelated;display:block;background:#000}
+#gameWrap{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;background:#000}
+#game{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated;display:block;background:#000;will-change:transform}
 :root{--strip:calc(54px + env(safe-area-inset-bottom))}
-body.playing #game{height:calc(100% - var(--strip))}
+body.playing #gameWrap{height:calc(100% - var(--strip))}
 .layer{position:fixed;inset:0;pointer-events:none}
 .hidden{display:none!important}
 button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
@@ -701,7 +702,7 @@ body.noStickLabels .stick .sl{display:none}
 #compass.here{border-color:#ffd84a}
 body.noBar #strip{background:none;border:0;box-shadow:none;pointer-events:none}
 body.noBar #strip>*{pointer-events:auto}
-body.playing.noBar #game{height:100%}
+body.playing.noBar #gameWrap{height:100%}
 body.noBar{--strip:calc(4px + env(safe-area-inset-bottom))}
 .chk{display:inline-flex;gap:6px;align-items:center;font-family:var(--fs);font-size:13px;margin:2px 0 4px}
 #settings .panel{max-height:calc(100vh - 16px);overflow:auto}
@@ -739,6 +740,23 @@ body.hudEditing #hud *{pointer-events:none!important}
 .qzFail{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;background:#0c0a12;color:#f4f0e4;font:600 15px/1.4 system-ui,-apple-system,sans-serif;text-align:center}.qzFail b{color:#ffd84a}.qzFail>b{font-size:26px;letter-spacing:2px}.qzFail small{color:#7a7288;font-size:11px;max-width:90vw;word-break:break-word}
 #a2hs{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 10px);transform:translateX(-50%);z-index:60;max-width:min(520px,92vw);display:flex;align-items:center;gap:10px;padding:8px 12px;background:#141118;border:2px solid #ffd84a;color:#f4f0e4;font:600 12px/1.35 system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.6)}#a2hs b{color:#ffd84a;font-family:var(--fy);font-weight:400;font-size:13px;white-space:nowrap}#a2hs i{color:#ffd84a;font-style:normal}#a2hs button{background:#e8862a;border:2px solid #000;font:700 12px system-ui;padding:5px 10px;color:#1a0d00}
 </style>
+<script>
+/* Phone held upright (or rotation locked): instead of asking to turn the phone, the game runs in a frame drawn already lying down.
+   Turning the phone makes it read normally; if the browser rotates by itself, the frame just un-rotates. */
+(function(){try{
+  if(/[?&]qzrot=/.test(location.search))return;
+  if(window.top!==window)return;
+  if(!matchMedia('(pointer:coarse)').matches||innerWidth>innerHeight)return;
+  window.__qzOuter=1;var u=location.href.split('#')[0],q=function(v){return u+(u.indexOf('?')<0?'?':'&')+'qzrot='+v};
+  document.write('<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}body>*:not(#qzRot){display:none!important}#qzRot{position:fixed;left:0;top:0;border:0;transform-origin:0 0;background:#000;display:block}</style>');
+  addEventListener('DOMContentLoaded',function(){var f=document.createElement('iframe');f.id='qzRot';f.allow='fullscreen; autoplay; screen-wake-lock';f.setAttribute('allowfullscreen','');f.src=q(1);document.body.appendChild(f);
+    function fit(){var W=innerWidth,H=innerHeight;if(W>H){f.style.width=W+'px';f.style.height=H+'px';f.style.transform='none'}else{f.style.width=H+'px';f.style.height=W+'px';f.style.transform='translateX('+W+'px) rotate(90deg)'}}
+    fit();addEventListener('resize',fit);addEventListener('orientationchange',function(){setTimeout(fit,300)});
+    // the frame could not start the game here (blocked or broken): fall back to the normal page
+    var ok=false,ld=0;addEventListener('message',function(e){if(e.source===f.contentWindow&&e.data==='qz-boot'){ok=true;try{f.focus()}catch(x){}}});f.addEventListener('load',function(){ld=Date.now()});
+    var t0=Date.now(),chk=setInterval(function(){if(ok){clearInterval(chk);return}if((ld&&Date.now()-ld>8000)||Date.now()-t0>60000){clearInterval(chk);location.replace(q(0))}},1000)})
+}catch(e){}})();
+</script>
 </head>
 <body>
 <noscript><div class="qzFail"><b>QUEBRADA Z</b><p>Este visualizador não roda jogos (JavaScript desligado).</p><p>Abra o link do jogo no <b>Safari</b> ou no <b>Chrome</b>. Se recebeu o arquivo pelo WhatsApp/Arquivos, a pré-visualização do iPhone não roda o jogo.</p></div></noscript>
@@ -746,10 +764,10 @@ body.hudEditing #hud *{pointer-events:none!important}
 <script>
 /* boot guard (plain ES5 so it runs even when the game script can't): shows why the game didn't start */
 (function(){var errs=[];window.addEventListener('error',function(e){errs.push((e.message||'erro')+(e.lineno?' @'+e.lineno:''))});
-  setTimeout(function(){if(window.__qzBoot)return;var f=document.getElementById('qzFail');if(!f)return;f.style.display='flex';
+  setTimeout(function(){if(window.__qzBoot||window.__qzOuter)return;var f=document.getElementById('qzFail');if(!f)return;f.style.display='flex';
     document.getElementById('qzFailErr').textContent=(errs.length?errs.slice(0,2).join(' | '):'sem erro registrado')+' · '+navigator.userAgent.slice(0,120)},6000)})();
 </script>
-<canvas id="game"></canvas>
+<div id="gameWrap"><canvas id="game"></canvas></div>
 
 <div id="hud" class="layer hidden">
   <div id="powers"></div>
@@ -976,6 +994,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
+if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
 // =====================================================================
@@ -1022,6 +1041,8 @@ const CONFIG={
     dmg:{claw:42,dash:55,slam:60,throw:26,leap:58,spikes:40,beam:50},reward:{pts:6000,drops:16},
     final:14,win:{coins:400,xp:250,delay:4.5}},
   // ---- Capitão Caveira: boss of wave `wave` (7); the Observador is the final boss (CONFIG.boss.final) ----
+  // ---- camera: zoom > 1 shows the world bigger (same scale on both axes, never stretched); the frame follows Marcus up and down ----
+  view:{zoom:1.22,anchor:.8,follow:5},
   cap:{wave:7,hpMul:45,speed:62,spdPh:[1,1.12,1.3],vestFrac:.2,maxAdds:4,capFrac:.45,sc:[2.1,1.95,1.6],ph:[.66,.33],
     dmg:{bullet:10,gren:36,charge:34,mortar:32,melee:30,mine:30,strike:38},reward:{pts:6000,drops:16},kickStun:.8},
   // ---- merchant: first appears in wave `firstWave` (in a room next to the start, or the start room itself), moves every `every` waves,
@@ -4100,17 +4121,27 @@ function drawTracers(g){if(!S.tracers.length)return;g.imageSmoothingEnabled=true
 // frame pacing: 120/90 Hz phones are held to ~60 fps (half the work); the screen canvas is the low-res buffer x1 or x2
 let last=0,nextT=0;function loop(ts){if(ts<nextT-2){requestAnimationFrame(loop);return}nextT=Math.max(nextT+1000/(QUAL.fps30&&S.mode==='play'?30:60),ts);const rdt=(ts-last)/1000||0,dt=Math.min(.033,rdt)*(S.slow?.2:1);last=ts;if(S.mode==='play')fpsWatch(rdt);
   // a bug in one frame must never freeze the game: log it, reset the drawing state and keep the loop alive
-  try{if(S.hitStop>0)S.hitStop-=dt;else if(S.mode==='play'||S.mode==='over')update(dt);if(S.mode==='play'||S.mode==='over'||S.mode==='pause')render();if(S.mode==='play')UI.hud()}
+  try{if(S.hitStop>0)S.hitStop-=dt;else if(S.mode==='play'||S.mode==='over')update(dt);if(S.mode==='play'||S.mode==='over'||S.mode==='pause'){viewFollow(dt);render()}if(S.mode==='play')UI.hud()}
   catch(e){S.errN=(S.errN||0)+1;if(S.errN<6)console.error('frame error',e);try{g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';if(low!==cv){low=cv;g=cx}}catch(_){}}
   requestAnimationFrame(loop)}
-function resize(){const r=cv.getBoundingClientRect(),cw=r.width||innerWidth,ch=r.height||innerHeight;
-  VW=clamp(Math.round(VH*cw/ch),480,QUAL.tier>=2?700:QUAL.tier>=1?780:860);
+// The canvas is always shown with the SAME scale on both axes. In a match the camera is zoomed (CONFIG.view.zoom): the frame is
+// taller than the screen and slides up/down to follow Marcus. If the width hits the quality cap, the zoom grows instead of stretching.
+const VIEW={sc:1,ch:1,off:0,maxOff:0,set:null};
+function resize(){const r=cv.parentNode.getBoundingClientRect(),cw=r.width||innerWidth,ch=r.height||innerHeight,zp=document.body.classList.contains('playing')?CONFIG.view.zoom:1;
+  VW=clamp(Math.round(VH/zp*cw/ch),480,QUAL.tier>=2?700:QUAL.tier>=1?780:860);
+  const sc=cw/VW,h=VH*sc;VIEW.sc=sc;VIEW.ch=ch;VIEW.maxOff=Math.max(0,h-ch);cv.style.width=cw+'px';cv.style.height=h+'px';
+  VIEW.off=h<=ch?(ch-h)/2:-VIEW.maxOff;VIEW.set=null;viewApply();
   // the frame is drawn straight into the screen canvas at its native pixel-art size; CSS (image-rendering:pixelated) scales it on the GPU
   cv.width=VW;cv.height=VH;cx.imageSmoothingEnabled=false;low=cv;g=cx;[lc,lx]=mkCanvas(Math.ceil(VW*LQ),Math.ceil(VH*LQ));[tc,tx]=mkCanvas(Math.ceil(VW*LQ),Math.ceil(VH*LQ))}
 let tc,tx;
 // light map resolution: half size (the glows are soft anyway); quarter in the lowest tier
 let LQ=.5;
-addEventListener('resize',resize);
+addEventListener('resize',resize);addEventListener('orientationchange',()=>{setTimeout(resize,250);setTimeout(resize,700)});
+try{new ResizeObserver(()=>resize()).observe(cv.parentNode)}catch(e){}
+function viewApply(){const o=Math.round(VIEW.off);if(VIEW.set!==o){VIEW.set=o;cv.style.transform='translate3d(0,'+o+'px,0)'}}
+// vertical follow: keep Marcus at CONFIG.view.anchor of the screen height, inside the frame
+function viewFollow(dt){if(!(VIEW.maxOff>0))return;const p=S.player,sc=VIEW.sc,visH=VIEW.ch/sc,V=CONFIG.view;
+  const y0=p?clamp(p.y-V.anchor*visH,0,VH-visH):VH-visH,t=-y0*sc;VIEW.off=VIEW.set===null?t:lerp(VIEW.off,t,Math.min(1,dt*V.follow));viewApply()}
 
 // ---------- shop preview: player in idle holding a weapon ----------
 function drawPreview(ctx,gunId,armor,t){ctx.save();try{drawPreview0(ctx,gunId,armor,t)}catch(e){console.warn('preview',e)}finally{ctx.restore()}}
@@ -5237,7 +5268,9 @@ setInterval(()=>{if(!S.input.touch){S.input.move=(K.KeyD||K.ArrowRight?1:0)-(K.K
 function toLow(cx_,cy_){const r=cv.getBoundingClientRect();return[(cx_-r.left)/r.width*VW,(cy_-r.top)/r.height*VH]}
 function openShopKey(){}
 cv.addEventListener('mousemove',e=>{const[x,y]=toLow(e.clientX,e.clientY);S.input.mx=x;S.input.my=y});
-cv.addEventListener('mousedown',e=>{if(S.mode!=='play'||S.shopOpen)return;S.input.touch=false;if(e.button===0)S.input.fire=true;if(e.button===2)S.input.melee=true});
+// browsers fire a fake mousedown after a tap: it must not switch the game to mouse mode (that hid the touch controls)
+const fakeMouse=e=>(e.sourceCapabilities&&e.sourceCapabilities.firesTouchEvents)||performance.now()-(S.touchT||0)<1200;
+cv.addEventListener('mousedown',e=>{if(S.mode!=='play'||S.shopOpen||fakeMouse(e))return;S.input.touch=false;if(e.button===0)S.input.fire=true;if(e.button===2)S.input.melee=true});
 addEventListener('mouseup',e=>{if(e.button===0)S.input.fire=false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('wheel',e=>{if(S.mode==='play')S.input.swap=true},{passive:true});
@@ -5248,13 +5281,13 @@ const sticks={L:{id:null,el:$('stickL'),cx:0,cy:0,r:50},R:{id:null,el:$('stickR'
 function stickGeom(s){const b=s.el.getBoundingClientRect();s.cx=b.left+b.width/2;s.cy=b.top+b.height/2;s.r=Math.max(30,b.width*.43)}
 function stickSet(s,x,y){const dx=x-s.cx,dy=y-s.cy,d=Math.hypot(dx,dy),r=s.r,k=d>r?r/d:1;s.el.querySelector('.knob').style.transform=`translate(${dx*k}px,${dy*k}px)`;return[dx/r*k,dy/r*k,Math.min(1,d/r)]}
 function stickRelease(s){s.id=null;s.el.classList.remove('on','fire','run');s.el.querySelector('.knob').style.transform=''}
-function onDown(e){if(S.mode!=='play'||e.pointerType==='mouse'||document.body.classList.contains('hudEditing'))return;S.input.touch=true;if(S.shopOpen||e.target.closest('.tbtn,#pauseBtn,#strip,#shop,button,#bAct,#nokia,#phone,#pauseBar'))return;
-  let best=null,bd=1e9;for(const side of['L','R']){const s=sticks[side];if(s.id!==null)continue;stickGeom(s);const d=Math.hypot(e.clientX-s.cx,e.clientY-s.cy);if(d<s.r*2.2&&d<bd){bd=d;best=side}}
+function onDown(e){if(e.pointerType==='touch')S.touchT=performance.now();if(S.mode!=='play'||e.pointerType==='mouse'||document.body.classList.contains('hudEditing'))return;S.input.touch=true;if(S.shopOpen||e.target.closest('.tbtn,#pauseBtn,#strip,#shop,button,#bAct,#nokia,#phone,#pauseBar'))return;
+  let best=null,bd=1e9;for(const side of['L','R']){const s=sticks[side];stickGeom(s);const d=Math.hypot(e.clientX-s.cx,e.clientY-s.cy);if(d<s.r*2.2&&d<bd){bd=d;best=side}}
   if(!best){const side=e.clientX<innerWidth*.5?'L':'R',s=sticks[side];stickGeom(s);const far=s.id!==null||Math.hypot(e.clientX-s.cx,e.clientY-s.cy)>s.r*(side==='R'&&CONFIG.aim.free?CONFIG.aim.rStick:3.2);
     // free aim: a finger anywhere else points the gun (it never shoots by itself)
     if(far){if(CONFIG.aim.free&&!S.input.ptr){S.input.ptr={id:e.pointerId,x:e.clientX,y:e.clientY};e.preventDefault()}return}best=side}
-  const s=sticks[best];s.id=e.pointerId;s.el.classList.add('on');stickMove(best,e.clientX,e.clientY);e.preventDefault()}
-function stickMove(side,x,y){const s=sticks[side],[sx,sy,mag]=stickSet(s,x,y),I=S.input;
+  const s=sticks[best];if(s.id!==null&&s.id!==e.pointerId)stickRelease(s);s.id=e.pointerId;s.el.classList.add('on');stickMove(best,e.clientX,e.clientY);e.preventDefault()}
+function stickMove(side,x,y){const s=sticks[side],[sx,sy,mag]=stickSet(s,x,y),I=S.input;s.lx=x;s.ly=y;s.lt=performance.now();
   if(side==='L'){I.move=sx;const up=sy<-.6&&Math.abs(sy)>Math.abs(sx)*.7,dn=sy>.65&&Math.abs(sy)>Math.abs(sx)*.7;if(up&&!I.jump)I.jumpEdge=true;I.jump=up;if(dn&&!I.down)I.downEdge=true;I.down=dn;
     // run: thumb at the side edge of the stick (hysteresis: on at runAt, off below runOff)
     const ax=Math.abs(sx),PC=CONFIG.player;I.runEdge=I.runEdge?ax>=PC.runOff:ax>=PC.runAt;s.el.classList.toggle('run',!!I.runEdge)}
@@ -5263,7 +5296,17 @@ function onMove(e){{const P_=S.input.ptr;if(P_&&P_.id===e.pointerId){P_.x=e.clie
 function onUp(e){if(S.input.ptr&&S.input.ptr.id===e.pointerId)S.input.ptr=null;for(const side of['L','R']){const s=sticks[side];if(s.id!==e.pointerId)continue;stickRelease(s);const I=S.input;
   if(side==='L'){I.move=0;I.jump=false;I.down=false;I.runEdge=false}else{I.fire=false;I.aimMag=0}}}
 addEventListener('pointerdown',onDown,{passive:false});addEventListener('pointermove',onMove);addEventListener('pointerup',onUp);addEventListener('pointercancel',onUp);
-addEventListener('touchstart',()=>{S.input.touch=true},{passive:true});
+addEventListener('touchstart',e=>{S.input.touch=true;S.touchT=performance.now();stickSync(e)},{passive:true});
+// Safety net for lost touches (iOS can swallow pointerup/pointercancel on system gestures, notifications, edge swipes):
+// every touch event carries the list of fingers really on the screen; a stick or the aim finger with no finger near it is released.
+function stickFree(side){const s=sticks[side];if(s.id!==null)onUp({pointerId:s.id})}
+function stickSync(e){const T=e.touches;if(!T)return;const near=(x,y)=>{for(const t of T)if(Math.hypot(t.clientX-x,t.clientY-y)<110)return true;return false};
+  for(const side of['L','R']){const s=sticks[side];if(s.id!==null&&!near(s.lx,s.ly))stickFree(side)}
+  const P_=S.input.ptr;if(P_&&!near(P_.x,P_.y))S.input.ptr=null}
+function sticksReset(){stickFree('L');stickFree('R');S.input.ptr=null;S.input.move=0;S.input.fire=false}
+addEventListener('touchend',stickSync,{passive:true});addEventListener('touchcancel',stickSync,{passive:true});
+addEventListener('blur',sticksReset);addEventListener('pagehide',sticksReset);document.addEventListener('visibilitychange',()=>{if(document.hidden)sticksReset()});
+setInterval(()=>{if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null))sticksReset()},250);
 const holdBtn=(id,on,off)=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();S.input.touch=true;b.classList.add('on');on()});
   const up=()=>{b.classList.remove('on');off&&off()};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up)};
 holdBtn('bReload',()=>S.input.reload=true);holdBtn('bNade',()=>S.input.nade=true);holdBtn('bSwap',()=>S.input.swap=true);holdBtn('bMelee',()=>S.input.melee=true);
@@ -5382,7 +5425,7 @@ $('lExit').onclick=e=>{e.stopPropagation();S.lab=0;S.slow=0;CONFIG.decals=true;$
 $('bLab').onclick=()=>{SFX.init();SFX.resume();startLab()};
 if(location.hash==='#lab'||location.search.includes('lab'))setTimeout(()=>{if(assetsReady)startLab()},1500);
 
-window.__qzBoot=1;
+window.__qzBoot=1;try{if(parent!==window)parent.postMessage('qz-boot','*')}catch(e){}
 
 // ---------- fullscreen: browsers only allow it from a tap, so the very first touch on the title screen asks for it ----------
 const isStandalone=()=>!!(navigator.standalone||matchMedia('(display-mode: fullscreen)').matches||matchMedia('(display-mode: standalone)').matches);
