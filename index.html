@@ -1017,7 +1017,7 @@ const SHEETS={"c1_Idle": {"n": 6, "f": 128, "ax": 60, "src": "data:image/png;bas
 
 // ===== core.js =====
 'use strict';
-const QZ_VERSION='25.12';
+const QZ_VERSION='25.13';
 if(window.__qzOuter)throw new Error('qz-outer: the game runs inside the rotated frame');
 // =====================================================================
 //  CONFIG — every balance value of the game lives here
@@ -5339,19 +5339,26 @@ function stickMove(side,x,y){const s=sticks[side],I=S.input,dx=x-s.cx,dy=y-s.cy,
     if(up&&!I.jump)I.jumpEdge=true;I.jump=up;if(dn&&!I.down)I.downEdge=true;I.down=dn;
     const ax=Math.abs(sx),PC=CONFIG.player;I.runEdge=I.runEdge?ax>=PC.runOff:ax>=PC.runAt;s.el.classList.toggle('run',!!I.runEdge)}
   else{I.aimAng=Math.atan2(sy,sx);I.aimMag=mag;I.fire=mag>.72;s.el.classList.toggle('fire',I.fire)}}
-function stickFeed(side,x,y){const s=sticks[side];if(s.rel){const[dx,dy]=rotA(x-s.x0,y-s.y0);stickMove(side,s.cx+dx,s.cy+dy)}else stickMove(side,x,y)}
+function stickFeed(side,x,y){const s=sticks[side];if(s.rel){let dx=x-s.x0,dy=y-s.y0;if(CAL.rot)[dx,dy]=rotA(dx,dy);stickMove(side,s.cx+dx,s.cy+dy)}else stickMove(side,x,y)}
 function stickClear(side){const s=sticks[side],I=S.input;if(s.id===null)return;stickRelease(s);
   if(side==='L'){I.move=0;I.jump=false;I.down=false;I.runEdge=false}else{I.fire=false;I.aimMag=0}}
 const TC_SKIP='.tbtn,#pauseBtn,#strip,#shop,button,#bAct,#nokia,#phone,#pauseBar,#pickList,#perks,#perkMenu,#roundBox';
 // a finger lands: returns true when it was taken by a stick or the free aim (so the browser default is cancelled)
+// A finger lands. The LEFT half of the screen (anything that is not a button) is the move stick: it counts from where the
+// thumb lands, so it works even if the drawn stick is somewhere else (HUD layouts, odd screens). On the RIGHT half, a finger
+// near the aim stick aims (and fires past 72%), anywhere else it is free aim. If the finger lands right on the drawn stick
+// (within 1.4 radius) its centre is used, exactly like a fixed stick.
 function tcDown(id,x,y,target){S.input.touch=true;S.touchT=performance.now();
-  const zone=target&&target.closest?target.closest('.stZone'):null;if(target&&target.closest&&!zone){const b=target.closest('.tbtn,button');if(b)calibrate(x,y,b)}
+  if(target&&target.closest){const zn=target.closest('.stZone'),b=zn?null:target.closest('.tbtn,button');if(zn)calibrate(x,y,zn);else if(b)calibrate(x,y,b)}
   if(S.mode!=='play'||S.shopOpen||document.body.classList.contains('hudEditing'))return false;
-  if(!zone&&target&&target.closest&&target.closest(TC_SKIP))return false;
-  if(zone){const side=zone.dataset.side,s=sticks[side];calibrate(x,y,zone);stickGeom(s);if(s.id!==null&&s.id!==id)stickClear(side);
-    s.id=id;s.rel=!!CAL.rot;s.x0=x;s.y0=y;s.el.classList.add('on');stickFeed(side,x,y);return true}
-  // anywhere else: free aim (points the gun, never fires)
-  if(CONFIG.aim.free&&!S.input.ptr){const[mx,my]=mapPt(x,y);S.input.ptr={id,x:mx,y:my};return true}return false}
+  if(target&&target.closest&&!target.closest('.stZone')&&target.closest(TC_SKIP))return false;
+  const[mx,my]=mapPt(x,y),side=mx<innerWidth*.5?'L':'R',s=sticks[side];stickGeom(s);
+  const ok=s.el.getBoundingClientRect().width>0,d=ok?Math.hypot(mx-s.cx,my-s.cy):1e9,R=s.r||50;
+  if(side==='R'&&!(d<=R*(CONFIG.aim.free?CONFIG.aim.rStick:3.2))){if(CONFIG.aim.free&&!S.input.ptr){S.input.ptr={id,x:mx,y:my};return true}return false}
+  if(s.id!==null&&s.id!==id)stickClear(side);
+  s.id=id;s.x0=x;s.y0=y;s.el.classList.add('on');
+  // on the drawn stick: absolute (the stick centre); elsewhere: relative to where the thumb landed
+  s.rel=!(d<=R*1.4)||!!CAL.rot;s.abs=!s.rel;stickFeed(side,x,y);return true}
 function tcMove(id,x,y){const P_=S.input.ptr;if(P_&&P_.id===id){const[mx,my]=mapPt(x,y);P_.x=mx;P_.y=my}for(const side of['L','R'])if(sticks[side].id===id)stickFeed(side,x,y)}
 function tcUp(id){const P_=S.input.ptr;if(P_&&P_.id===id)S.input.ptr=null;for(const side of['L','R'])if(sticks[side].id===id)stickClear(side)}
 function tcHeld(){return sticks.L.id!==null||sticks.R.id!==null||!!S.input.ptr}
@@ -5364,11 +5371,11 @@ const tAlive=e=>{const set=new Set();for(const t of tList(e.touches))set.add('t'
 if(USE_TE){
   addEventListener('touchstart',e=>{TC.ts++;try{const t0=e.changedTouches[0];TC.tg=(t0.target.id||t0.target.className||t0.target.tagName||'?')+'';TC.xy=Math.round(t0.clientX)+','+Math.round(t0.clientY)}catch(x){}S.input.touch=true;S.touchT=performance.now();let took=false;
     try{tcSync(tAlive(e));for(const t of tList(e.changedTouches))if(tcDown('t'+t.identifier,t.clientX,t.clientY,t.target))took=true}catch(x){TC.err=String(x)}
-    if(took&&e.cancelable)e.preventDefault()},{passive:false});
+    if(took&&e.cancelable)e.preventDefault()},{passive:false,capture:true});
   addEventListener('touchmove',e=>{TC.tm++;try{for(const t of tList(e.changedTouches))tcMove('t'+t.identifier,t.clientX,t.clientY)}catch(x){TC.err=String(x)}
-    if(e.cancelable&&S.mode==='play'&&tcHeld())e.preventDefault()},{passive:false});
+    if(e.cancelable&&S.mode==='play'&&tcHeld())e.preventDefault()},{passive:false,capture:true});
   const end=e=>{e.type==='touchcancel'?TC.tx++:TC.te++;try{for(const t of tList(e.changedTouches))tcUp('t'+t.identifier);tcSync(tAlive(e))}catch(x){TC.err=String(x)}};
-  addEventListener('touchend',end,{passive:false});addEventListener('touchcancel',end,{passive:false})}
+  addEventListener('touchend',end,{passive:false,capture:true});addEventListener('touchcancel',end,{passive:false,capture:true})}
 // ---- pointer events: mouse/pen, or touch on browsers without touch events ----
 const pTouch=e=>e.pointerType==='touch'||e.pointerType==='pen';
 addEventListener('pointerdown',e=>{TC.pd++;if(USE_TE&&e.pointerType==='touch')return;if(e.pointerType==='mouse')return;if(tcDown('p'+e.pointerId,e.clientX,e.clientY,e.target))e.preventDefault()},{passive:false});
@@ -5379,7 +5386,7 @@ addEventListener('blur',sticksReset);addEventListener('pagehide',sticksReset);do
 setInterval(()=>{touchVis();zonesFit();if(S.mode!=='play'&&(sticks.L.id!==null||sticks.R.id!==null||S.input.ptr))sticksReset()},250);
 // one-line touch diagnostics shown during the match (temporary, to find what the phone really sends)
 setInterval(()=>{const d=$('qzDiag');if(!d||S.mode!=='play')return;const zl=$('zoneL').getBoundingClientRect(),sl=sticks.L;
-  d.textContent='v'+QZ_VERSION+' toque '+TC.ts+'/'+TC.tm+'/'+TC.te+(TC.tx?' cancel '+TC.tx:'')+' ptr '+TC.pd+' | alvo '+(TC.tg||'-')+' @'+(TC.xy||'-')+' | L '+(sl.id||'-')+' mov '+(+S.input.move||0).toFixed(1)+
+  d.textContent='v'+QZ_VERSION+' toque '+TC.ts+'/'+TC.tm+'/'+TC.te+(TC.tx?' cancel '+TC.tx:'')+' ptr '+TC.pd+' | alvo '+(TC.tg||'-')+' @'+(TC.xy||'-')+' | L '+(sl.id||'-')+(sl.id?(sl.rel?' rel':' abs'):'')+' mov '+(+S.input.move||0).toFixed(1)+
     '\nzonaL '+Math.round(zl.left)+','+Math.round(zl.top)+' '+Math.round(zl.width)+' | coords '+(CAL.rot===null?'?':CAL.rot?'giradas':'ok')+' | tela '+innerWidth+'x'+innerHeight+(TC.err?' | ERR '+TC.err.slice(0,60):'')},300);
 // input diagnostics (open the link with #dbg)
 if(/qzdbg|#dbg/.test(location.href)){const d=document.createElement('pre');d.style.cssText='position:fixed;right:6px;top:40%;z-index:999;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;pointer-events:none;white-space:pre';document.body.append(d);
