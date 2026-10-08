@@ -25,7 +25,9 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 #gameWrap{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;background:#000}
 #game{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated;display:block;background:#000;will-change:transform}
 /* safe area: the phone's own insets (notch, status bar, home bar) + a comfort margin so nothing touches the edge */
-:root{--edge:16px;--edgeB:10px;--sat:calc(env(safe-area-inset-top) + var(--edge));--sar:calc(env(safe-area-inset-right) + var(--edge));--sab:calc(env(safe-area-inset-bottom) + var(--edgeB));--sal:calc(env(safe-area-inset-left) + var(--edge))}
+:root{--edge:16px;--edgeB:10px;--xt:0px;--xr:0px;--xb:0px;--xl:0px;--sat:calc(env(safe-area-inset-top) + var(--edge) + var(--xt));--sar:calc(env(safe-area-inset-right) + var(--edge) + var(--xr));--sab:calc(env(safe-area-inset-bottom) + var(--edgeB) + var(--xb));--sal:calc(env(safe-area-inset-left) + var(--edge) + var(--xl))}
+#safeGuide{position:fixed;left:var(--sal);right:var(--sar);top:var(--sat);bottom:var(--sab);border:2px dashed #ffd84a;border-radius:6px;pointer-events:none;z-index:60;display:none}
+body.safeSet #safeGuide{display:block}.safeRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 2px}.safeS{display:flex;align-items:center;gap:4px;background:#24202d;border:2px solid #000;padding:3px 6px;font-family:var(--fz)}.safeS span{min-width:2.6em;color:#9aa}.safeS b{min-width:2.2em;text-align:center;color:#ffd84a}.safeS button{width:28px;height:28px;font-size:16px;background:#3a3446;color:#fff;border:2px solid #000;cursor:pointer;padding:0}
 :root{--strip:calc(54px + var(--sab))}
 body.playing #gameWrap{height:calc(100% - var(--strip))}
 .layer{position:fixed;inset:0;pointer-events:none}
@@ -756,12 +758,14 @@ body.hudEditing #hud *{pointer-events:none!important}
     var dbg=/qzdbg|#dbg/.test(location.href),dv;if(dbg){dv=document.createElement('pre');dv.id='qzProbe';dv.style.cssText='position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:4px 6px;background:rgba(0,0,0,.75);color:#7dff6a;font:10px/12px monospace;white-space:pre-wrap;max-width:90vw;pointer-events:none';document.body.appendChild(dv)}
     /* Margins: the phone's own insets when it reports them; when it does not (iOS often reports 0 for a home-screen app with a translucent
        status bar) fixed minimums are used: the frame never starts under the clock/battery or ends under the home bar. */
+    var SX=null;function SF(){if(!SX){try{SX=JSON.parse(localStorage.getItem('qz_safe')||'{}')}catch(e){SX={}}}return{t:+SX.t||0,r:+SX.r||0,b:+SX.b||0,l:+SX.l||0}}
+    addEventListener('message',function(e){if(e.source===f.contentWindow&&e.data&&e.data.qzSafe){SX=e.data.qzSafe;fit()}});
     function fit(){var vv=window.visualViewport,W=Math.round(vv&&vv.width||innerWidth),H=Math.round(vv&&vv.height||innerHeight),cs=getComputedStyle(pr),
         pt=parseFloat(cs.paddingTop)||0,pR=parseFloat(cs.paddingRight)||0,pb=parseFloat(cs.paddingBottom)||0,pl=parseFloat(cs.paddingLeft)||0,
         sa=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches,
-        T=Math.max(pt,sa?50:0)+8,B=Math.max(pb,sa?22:0)+8,L=pl+12,R=pR+12,aw=W-L-R,ah=H-T-B;
+        ex=SF(),T=Math.max(pt,sa?50:0)+8+ex.l,B=Math.max(pb,sa?22:0)+8+ex.r,L=pl+12+ex.b,R=pR+12+ex.t,aw=W-L-R,ah=H-T-B;
       if(W>H){f.style.width=W+'px';f.style.height=H+'px';f.style.transform='none'}else{f.style.width=ah+'px';f.style.height=aw+'px';f.style.transform='translate('+(L+aw)+'px,'+T+'px) rotate(90deg)'}
-      if(dv)dv.textContent='inner '+innerWidth+'x'+innerHeight+'\nvv '+W+'x'+H+'\nscreen '+screen.width+'x'+screen.height+'\nenv t'+pt+' r'+pR+' b'+pb+' l'+pl+'\nstandalone '+sa+'\nframe '+ah+'x'+aw+' T'+T+' B'+B+' L'+L+' R'+R}
+      if(dv)dv.textContent='inner '+innerWidth+'x'+innerHeight+'\nvv '+W+'x'+H+'\nscreen '+screen.width+'x'+screen.height+'\nenv t'+pt+' r'+pR+' b'+pb+' l'+pl+'\nstandalone '+sa+'\nextra t'+ex.t+' b'+ex.b+' l'+ex.l+' r'+ex.r+'\nframe '+ah+'x'+aw+' T'+T+' B'+B+' L'+L+' R'+R}
     fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);addEventListener('orientationchange',function(){setTimeout(fit,300)});
     // the frame could not start the game here (blocked or broken): fall back to the normal page
     var ok=false,ld=0;addEventListener('message',function(e){if(e.source===f.contentWindow&&e.data==='qz-boot'){ok=true;try{f.focus()}catch(x){}}});f.addEventListener('load',function(){ld=Date.now()});
@@ -934,9 +938,13 @@ body.hudEditing #hud *{pointer-events:none!important}
   </div>
 </div>
 
+<div id="safeGuide"></div>
 <div id="settings" class="screen shadeFull hidden">
   <div class="panel wide" style="text-align:center">
     <h3 class="yo">AJUSTES</h3>
+    <p style="margin:6px 0 2px">Zona segura (margem extra nas bordas, em pontos)</p>
+    <div class="safeRow" id="safeRow"></div><p class="segNote" style="min-height:0;margin:2px 0 4px">A linha amarela tracejada mostra a área segura. Aumente o lado que estiver cortado.</p>
+    <div class="row" style="justify-content:center;margin:2px 0"><button class="btn alt" id="safeReset">Automático</button></div>
     <p style="margin:6px 0 8px">Intensidade do sangue</p>
     <div class="seg" id="goreSeg"><button data-v="off">Desligado</button><button data-v="normal">Normal</button><button data-v="max">Máximo</button></div>
     <p class="segNote" id="goreNote"></p>
@@ -5417,7 +5425,18 @@ const GORE_NOTES={off:'Sem sangue: tiros soltam faíscas e os zumbis viram fuma�
 function setGore(v){CONFIG.gore=v;SAVE.d.gore=v;SAVE.save();for(const b of document.querySelectorAll('#goreSeg button'))b.classList.toggle('on',b.dataset.v===v);$('goreNote').textContent=GORE_NOTES[v];const lg=$('lGore');if(lg)lg.textContent='SANGUE: '+{off:'DESLIGADO',normal:'NORMAL',max:'MÁXIMO'}[v]}
 for(const b of document.querySelectorAll('#goreSeg button'))b.onclick=()=>{setGore(b.dataset.v);SFX.swap()};
 setGore(CONFIG.gore);
-let setBack='title';$('bSet').onclick=()=>{setBack='title';UI.show('settings')};$('bSet2').onclick=()=>{setBack='pause';UI.show('settings')};$('bSetOk').onclick=()=>UI.show(setBack);
+// ---- safe zone: extra margin per side (device-local, on top of the automatic one). Sides are as seen with the phone lying down. ----
+const SAFE={k:'qz_safe',d:{t:0,r:0,b:0,l:0},rot:/[?&]qzrot=1/.test(location.search),
+  load(){try{Object.assign(this.d,JSON.parse(localStorage.getItem(this.k)||'{}'))}catch(e){}},
+  apply(){const r=document.documentElement.style,d=this.rot?{t:0,r:0,b:0,l:0}:this.d;for(const k in d)r.setProperty('--x'+k,d[k]+'px');
+    // the rotated frame (parent page) owns the margins in portrait mode: tell it
+    try{if(this.rot)parent.postMessage({qzSafe:this.d},'*')}catch(e){}},
+  set(k,v){this.d[k]=clamp(Math.round(v),-16,96);try{localStorage.setItem(this.k,JSON.stringify(this.d))}catch(e){}this.apply();this.ui()},
+  ui(){for(const k in this.d){const b=document.querySelector('#safeRow [data-k="'+k+'"] b');if(b)b.textContent=this.d[k]}},
+  build(){const N={t:'CIMA',b:'BAIXO',l:'ESQ',r:'DIR'},row=$('safeRow');row.innerHTML='';for(const k of['t','b','l','r']){const d=document.createElement('div');d.className='safeS';d.dataset.k=k;d.innerHTML='<span>'+N[k]+'</span><button>−</button><b>0</b><button>+</button>';
+      const[m,p]=d.querySelectorAll('button');m.onclick=()=>{this.set(k,this.d[k]-4);SFX.swap()};p.onclick=()=>{this.set(k,this.d[k]+4);SFX.swap()};row.append(d)}this.ui()}};
+SAFE.load();SAFE.build();SAFE.apply();$('safeReset').onclick=()=>{SAFE.d={t:0,r:0,b:0,l:0};try{localStorage.removeItem(SAFE.k)}catch(e){}SAFE.apply();SAFE.ui();SFX.swap()};
+let setBack='title';const setOpen=on=>document.body.classList.toggle('safeSet',on);$('bSet').onclick=()=>{setBack='title';setOpen(1);UI.show('settings')};$('bSet2').onclick=()=>{setBack='pause';setOpen(1);UI.show('settings')};$('bSetOk').onclick=()=>{setOpen(0);UI.show(setBack)};
 // ---------- LAB DO SANGUE: one standing zombie on each side, every weapon, decal / slow motion toggles ----------
 function startLab(){S.mi=0;S.ci=0;S.matchSeed=0;startGame();S.lab=1;S.labKill=0;S.slow=0;CONFIG.decals=true;S.shopOpen=false;$('shop').classList.add('hidden');$('pauseBar').classList.add('hidden');
   S.buyPhase.active=false;S.wait=1;S.round=6;$('banner').innerHTML='';const p=S.player;p.cash=0;giveWeapon('pistol','gold');p.swapT=0;$('labPanel').classList.remove('hidden');labSpawn(-1);labSpawn(1);labSync()}
