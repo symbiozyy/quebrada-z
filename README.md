@@ -28,3 +28,9 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 ## Novidades da v26.2
 - **Seringa**: botão novo abaixo da Esquiva (tecla V no teclado). Cura 45% da vida, recarga de 7 s, comprada na loja (EQUIPAMENTO), acumula até 3.
 - **Kit de Socorro consertado**: custa R$ 17.000, só revive se foi comprado, **uma vez por partida**, volta com 60% de vida e metade da munição (carregador e reserva), com invulnerabilidade curta.
+
+## Novidades da v26.3
+- **Vozes novas para todos os zumbis**: respiração, ataque e morte, cada uma com 3 variações sorteadas (sem repetir a mesma em seguida). Brutamontes (bruta e brutão) têm rugido e grunhido de dano ao levar tiro.
+- Sons criados para o jogo a partir das referências do autor (nenhum trecho das referências foi usado). Tipos sem referência (grita, cuspidor, cão, civil, mutante, choque, Observador e Capitão Caveira) ganharam vozes próprias.
+- Mantém o áudio por proximidade: mais perto do Marcus = mais alto e mais aberto. Chefes tocam sem atenuação e com eco.
+- As vozes carregam depois do primeiro toque, sem travar a abertura do jogo.
