@@ -789,6 +789,20 @@ body.hudEditing #hud *{pointer-events:none!important}
 .lkChip{font-size:14px;padding:7px 8px;min-height:32px;background:#24202d;color:#e9e4d8;border:2px solid #000}
 .lkChip.on{background:#e01010;color:#fff;box-shadow:inset 0 -3px 0 #7a0606}
 .lkNote{font-size:14px;color:#8a8494;line-height:1.1}
+.skHead{display:flex;gap:10px;align-items:center}.skHead p{margin:0;color:var(--mute);font-size:13px;line-height:1.25}
+.skTree{display:grid;gap:6px 8px;align-items:stretch}
+.skBr{font-family:var(--fz);font-size:12px;letter-spacing:2px;text-align:center;border-bottom:2px solid currentColor;padding-bottom:2px}
+.skNode{position:relative;display:flex;flex-direction:column;gap:4px;background:#1f1b27;border:2px solid #000;box-shadow:inset 0 0 0 1px #3a3446,inset 3px 0 0 var(--bc);padding:6px 6px 6px 9px;min-width:0}
+.skNode.child::before{content:"";position:absolute;left:50%;top:-8px;height:8px;border-left:2px dashed #4a4458}
+.skNode .skI{position:absolute;right:6px;top:4px;font-size:16px;color:var(--bc);opacity:.85}
+.skNode .skT b{display:block;font-size:16px;color:#ffd84a;padding-right:18px}
+.skNode .skT small{display:block;color:#bdb6cc;font-size:12px;line-height:1.2}
+.skNode .pips{display:flex;gap:3px;margin-top:3px}.skNode .pips i{width:12px;height:5px;background:#2a2433;border:1px solid #000}.skNode .pips i.on{background:var(--bc)}
+.skNode button{font-size:15px;background:linear-gradient(#ffb15a,#e8862a);color:#1a0d00;border:2px solid #000;padding:3px 4px;margin-top:auto}
+.skNode button.poor{filter:saturate(.3) brightness(.7)}.skNode button:disabled{background:#2a2433;color:#8d859d}
+.skNode.max button:disabled{background:#1f5a28;color:#ffd84a}
+.skNode.soon,.skNode.lock{opacity:.55}.skNode.soon{background:repeating-linear-gradient(135deg,#17141e 0 8px,#1c1824 8px 16px)}
+@media (max-height:440px){.skNode .skT small{font-size:11px}.skNode{padding:4px 4px 4px 7px}.skHead p{font-size:11px}}
 .lkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:5px}
 .lkItem{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;min-height:96px;background:#1f1b27;border:2px solid #000;box-shadow:inset 0 0 0 1px #3a3446;color:#e9e4d8}
 .lkItem canvas{width:72px;height:72px;image-rendering:pixelated;background:radial-gradient(circle at 50% 55%,#2c2638,#16131d 70%)}
@@ -948,7 +962,7 @@ body.hudEditing #hud *{pointer-events:none!important}
 <div id="creator" class="screen shadeFull hidden">
   <div class="panel wide lkPanel">
     <h3 class="yo" id="lkTitle">PERSONAGEM</h3>
-    <div class="seg" id="lkTabs"><button data-t="look">APARÊNCIA</button><button data-t="inv">INVENTÁRIO</button></div>
+    <div class="seg" id="lkTabs"><button data-t="look">APARÊNCIA</button><button data-t="inv">INVENTÁRIO</button><button data-t="skill">HABILIDADES</button></div>
     <div class="lkBody">
       <div class="lkLeft">
         <canvas id="lkPrev" width="176" height="176" title="Toque pra virar"></canvas>
@@ -963,9 +977,9 @@ body.hudEditing #hud *{pointer-events:none!important}
 <div id="mshop" class="screen shadeFull hidden">
   <div class="panel wide">
     <h3 class="yo">LOJA</h3>
-    <div class="msHead"><span class="chip"><i class="ic coin"></i><b id="msCoins" class="num">0</b></span><div class="seg" id="msTabs"><button data-t="up">MELHORIAS</button><button data-t="skin">VISUAL</button></div></div>
+    <div class="msHead"><span class="chip"><i class="ic coin"></i><b id="msCoins" class="num">0</b></span><div class="seg" id="msTabs"><button data-t="skin">VISUAL</button><button data-t="skills" id="msSkills">HABILIDADES ›</button></div></div>
     <div class="msGrid" id="msGrid"></div>
-    <p class="segNote" id="msNote">Moedas vêm de cada partida: onda alcançada e zumbis mortos. As melhorias são pequenas de propósito.</p>
+    <p class="segNote" id="msNote">Roupas e acessórios são só visual.</p>
     <div class="row" style="justify-content:center"><button class="btn yo" id="bMsOk">VOLTAR</button></div>
   </div>
 </div>
@@ -11655,11 +11669,7 @@ function periodCfg() {
   return CONFIG.periods[S.period || "noite"];
 }
 function metaLvl(k) {
-  try {
-    return SAVE.d.up && SAVE.d.up[k] || 0;
-  } catch (e) {
-    return 0;
-  }
+  return skillLvl(k);
 }
 function ptsPop(x, y, v, col) {
   S.ptsPops = S.ptsPops || [];
@@ -20043,51 +20053,135 @@ function showProfile() {
   $("pfMaps").innerHTML = MAPS.map((m, i) => `<div><span>${m.name}</span><b>${unlocked(i) ? D.best[m.id] ? "onda " + D.best[m.id] : "\u2014" : "bloqueado"}</b></div>`).join("");
   UI.show("profile");
 }
-const UPG = { vida: { n: "Couro grosso", d: "Vida m\xE1xima" }, grana: { n: "P\xE9-de-meia", d: "Dinheiro no come\xE7o" }, recarga: { n: "M\xE3o leve", d: "Recarga mais r\xE1pida" }, tabua: { n: "Martelo bom", d: "Prega t\xE1bua mais r\xE1pido" } };
-const upFx = (k) => {
-  const f2 = CONFIG.meta.up[k].fx;
-  return k === "grana" ? `+R$${f2}` : k === "vida" ? `+${Math.round(f2 * 100)}%` : `-${Math.round(f2 * 100)}%`;
+// =====================================================================
+//  HABILIDADES (v26): as antigas "melhorias" da loja viraram nós de uma árvore, na tela PERSONAGEM.
+//  Nó = { ramo, posição (col/row), pré-requisitos, nível máximo, custo por nível, efeito }.
+//  O jogo só consulta skillLvl(id); os efeitos ficam onde sempre estiveram (CONFIG.meta.up[id].fx).
+//  Nós com soon:1 aparecem trancados ("em breve") e já reservam o lugar na árvore.
+// =====================================================================
+const SKILL_BRANCHES = [{ id: "corpo", name: "CORPO", col: "#e04a3a" }, { id: "grana", name: "GRANA", col: "#f2c230" }, { id: "armas", name: "ARMAS", col: "#5a8aba" }, { id: "obra", name: "OBRA", col: "#7dff3a" }];
+const skUp = (k) => CONFIG.meta.up[k];
+const SKILLS = {
+  vida: { branch: "corpo", name: "Couro grosso", desc: "Vida m\xE1xima", icon: "♥", pos: { col: 0, row: 0 }, requires: [], max: () => CONFIG.meta.upMax, cost: (lv) => Math.round(skUp("vida").base * Math.pow(CONFIG.meta.shopGrow, lv) / 10) * 10, fx: () => `+${Math.round(skUp("vida").fx * 100)}%` },
+  grana: { branch: "grana", name: "P\xE9-de-meia", desc: "Dinheiro no come\xE7o", icon: "$", pos: { col: 1, row: 0 }, requires: [], max: () => CONFIG.meta.upMax, cost: (lv) => Math.round(skUp("grana").base * Math.pow(CONFIG.meta.shopGrow, lv) / 10) * 10, fx: () => `+R$${skUp("grana").fx}` },
+  recarga: { branch: "armas", name: "M\xE3o leve", desc: "Recarga mais r\xE1pida", icon: "↻", pos: { col: 2, row: 0 }, requires: [], max: () => CONFIG.meta.upMax, cost: (lv) => Math.round(skUp("recarga").base * Math.pow(CONFIG.meta.shopGrow, lv) / 10) * 10, fx: () => `-${Math.round(skUp("recarga").fx * 100)}%` },
+  tabua: { branch: "obra", name: "Martelo bom", desc: "Prega t\xE1bua mais r\xE1pido", icon: "⚒", pos: { col: 3, row: 0 }, requires: [], max: () => CONFIG.meta.upMax, cost: (lv) => Math.round(skUp("tabua").base * Math.pow(CONFIG.meta.shopGrow, lv) / 10) * 10, fx: () => `-${Math.round(skUp("tabua").fx * 100)}%` },
+  // ---- próximos nós (em desenvolvimento): já têm lugar e pré-requisito, ainda sem efeito ----
+  folego: { branch: "corpo", name: "F\xF4lego", desc: "Corre mais antes de cansar", icon: "➿", pos: { col: 0, row: 1 }, requires: [{ id: "vida", lv: 3 }], max: () => 3, cost: () => 0, soon: 1 },
+  labia: { branch: "grana", name: "L\xE1bia", desc: "Mercante cobra menos", icon: "⚖", pos: { col: 1, row: 1 }, requires: [{ id: "grana", lv: 3 }], max: () => 3, cost: () => 0, soon: 1 },
+  mira: { branch: "armas", name: "Olho de \xE1guia", desc: "Mais chance de tiro na cabe\xE7a", icon: "⌖", pos: { col: 2, row: 1 }, requires: [{ id: "recarga", lv: 3 }], max: () => 3, cost: () => 0, soon: 1 },
+  chute: { branch: "obra", name: "P\xE9 de pedreiro", desc: "Chute empurra mais longe", icon: "✵", pos: { col: 3, row: 1 }, requires: [{ id: "tabua", lv: 3 }], max: () => 3, cost: () => 0, soon: 1 },
+  segunda: { branch: "corpo", name: "Segunda chance", desc: "Levanta uma vez por partida", icon: "✚", pos: { col: 0, row: 2 }, requires: [{ id: "folego", lv: 3 }], max: () => 1, cost: () => 0, soon: 1 }
 };
-const upPrice = (k) => Math.round(CONFIG.meta.up[k].base * Math.pow(CONFIG.meta.shopGrow, metaLvl(k)) / 10) * 10;
-let msTab = "up";
+function skillLvl(id) {
+  try {
+    const d = SAVE.d;
+    return d.skills && d.skills[id] || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+function skillReqOk(id) {
+  return SKILLS[id].requires.every((r) => skillLvl(r.id) >= r.lv);
+}
+// save antigo: d.up -> d.skills (idempotente). d.up continua como espelho pra versões antigas abertas em outro aparelho.
+function SKILLS_MIGRATE(d) {
+  d.skills = d.skills && typeof d.skills === "object" ? d.skills : {};
+  const up = d.up && typeof d.up === "object" ? d.up : {};
+  for (const k in up) if (SKILLS[k]) d.skills[k] = Math.max(d.skills[k] | 0, up[k] | 0);
+  for (const k in d.skills) if (!SKILLS[k] || SKILLS[k].soon) delete d.skills[k];
+  else d.skills[k] = Math.max(0, Math.min(SKILLS[k].max(), d.skills[k] | 0));
+  d.up = Object.assign({}, d.skills);
+  return d;
+}
+function buySkill(id) {
+  const D = SAVE.d, n = SKILLS[id], lv = skillLvl(id);
+  if (!n || n.soon || lv >= n.max() || !skillReqOk(id)) return false;
+  const pr = n.cost(lv);
+  if (D.coins < pr) return false;
+  D.coins -= pr;
+  D.skills = D.skills || {};
+  D.skills[id] = lv + 1;
+  D.up = Object.assign({}, D.skills);
+  SAVE.save();
+  return true;
+}
+// desenha a árvore: colunas = ramos, linhas = profundidade; lê pos/requires, então virar uma árvore "de verdade" é só CSS/arte
+function renderSkillTree(R, onChange) {
+  const D = SAVE.d, wrap = document.createElement("div");
+  wrap.className = "skTree";
+  const head = document.createElement("div");
+  head.className = "skHead";
+  head.innerHTML = `<span class="chip"><i class="ic coin"></i><b class="num">${D.coins}</b></span><p>Habilidades do Marcus. A \xE1rvore ainda est\xE1 crescendo: os n\xF3s trancados chegam nas pr\xF3ximas vers\xF5es.</p>`;
+  R.append(head);
+  const rows = Math.max(...Object.keys(SKILLS).map((k) => SKILLS[k].pos.row)) + 1;
+  wrap.style.gridTemplateColumns = `repeat(${SKILL_BRANCHES.length},minmax(0,1fr))`;
+  SKILL_BRANCHES.forEach((b, c) => {
+    const h = document.createElement("div");
+    h.className = "skBr";
+    h.style.gridColumn = c + 1;
+    h.style.color = b.col;
+    h.textContent = b.name;
+    wrap.append(h);
+  });
+  for (const id in SKILLS) {
+    const n = SKILLS[id], lv = skillLvl(id), max = n.max(), req = skillReqOk(id), br = SKILL_BRANCHES.find((b) => b.id === n.branch) || SKILL_BRANCHES[0];
+    const e = document.createElement("div");
+    e.className = "skNode" + (n.soon ? " soon" : !req ? " lock" : lv >= max ? " max" : "") + (n.requires.length ? " child" : "");
+    e.style.gridColumn = n.pos.col + 1;
+    e.style.gridRow = n.pos.row + 2;
+    e.style.setProperty("--bc", br.col);
+    e.dataset.id = id;
+    const reqTx = n.requires.map((r) => `${SKILLS[r.id].name} ${r.lv}`).join(", ");
+    e.innerHTML = `<div class="skI">${n.icon}</div><div class="skT"><b>${n.name}</b><small>${n.desc}${n.fx ? ": " + n.fx() + " por n\xEDvel" : ""}</small><div class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? "on" : ""}"></i>`).join("")}</div></div>`;
+    const btn = document.createElement("button");
+    if (n.soon) {
+      btn.textContent = "EM BREVE";
+      btn.disabled = true;
+      e.title = "Precisa: " + reqTx;
+    } else if (!req) {
+      btn.textContent = "PRECISA " + reqTx;
+      btn.disabled = true;
+    } else if (lv >= max) {
+      btn.textContent = "NO M\xC1XIMO";
+      btn.disabled = true;
+    } else {
+      const pr = n.cost(lv);
+      btn.textContent = pr + " moedas";
+      btn.classList.toggle("poor", D.coins < pr);
+      btn.onclick = () => {
+        if (buySkill(id)) {
+          SFX.buy && SFX.buy();
+          onChange && onChange();
+        } else {
+          SFX.deny && SFX.deny();
+          btn.animate([{ transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "none" }], { duration: 160 });
+        }
+      };
+    }
+    e.append(btn);
+    wrap.append(e);
+  }
+  wrap.style.gridTemplateRows = `auto repeat(${rows},auto)`;
+  R.append(wrap);
+}
+let msTab = "skin";
 function showMShop() {
   const D = SAVE.d, g2 = $("msGrid");
   $("msCoins").textContent = D.coins;
   document.querySelectorAll("#msTabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === msTab));
   g2.innerHTML = "";
-  if (msTab === "up") for (const k in UPG) {
-    const lv = metaLvl(k), max = CONFIG.meta.upMax, pr2 = upPrice(k), d = document.createElement("div");
-    d.className = "msItem";
-    d.innerHTML = `<div class="n">${UPG[k].n}</div><div class="d">${UPG[k].d}: ${upFx(k)} por n\xEDvel</div><div class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? "on" : ""}"></i>`).join("")}</div>`;
-    const b = document.createElement("button");
-    if (lv >= max) {
-      b.textContent = "NO M\xC1XIMO";
-      b.disabled = true;
-    } else {
-      b.textContent = pr2 + " moedas";
-      b.classList.toggle("poor", D.coins < pr2);
-    }
-    b.onclick = () => {
-      if (lv >= max) return;
-      if (D.coins < pr2) {
-        SFX.deny();
-        b.animate([{ transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "none" }], { duration: 160 });
-        return;
-      }
-      D.coins -= pr2;
-      D.up[k] = lv + 1;
-      SAVE.save();
-      SFX.buy();
-      showMShop();
-    };
-    d.append(b);
-    g2.append(d);
-  }
-  else LOOK.shopGrid(g2);
-  $("msNote").textContent = msTab === "up" ? "Moedas v\xEAm de cada partida: onda alcan\xE7ada e zumbis mortos. As melhorias s\xE3o pequenas de prop\xF3sito." : "Roupas e acess\xF3rios s\xE3o s\xF3 visual: n\xE3o mudam dano nem vida. Kit sai 20% mais barato.";
+  if (msTab === "up") msTab = "skin";
+  LOOK.shopGrid(g2);
+  $("msNote").textContent = "Melhorias agora ficam em PERSONAGEM \u203A HABILIDADES. Roupas e acess\xF3rios s\xE3o s\xF3 visual: n\xE3o mudam dano nem vida. Kit sai 20% mais barato.";
   UI.show("mshop");
 }
 document.querySelectorAll("#msTabs button").forEach((b) => b.onclick = () => {
+  if (b.dataset.t === "skills") {
+    SFX.swap();
+    LOOK.open("edit", "title", "skill");
+    return;
+  }
   msTab = b.dataset.t;
   SFX.swap();
   showMShop();
@@ -20622,7 +20716,9 @@ const LOOK = (function () {
     document.querySelectorAll("#lkTabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === ui.tab));
     $$("lkTabs").classList.toggle("hidden", ui.mode === "create");
     document.querySelectorAll("#lkPose button").forEach((b) => b.classList.toggle("on", b.dataset.p === ui.pose));
-    if (ui.tab === "look" || ui.mode === "create") renderLookTab(R); else renderInvTab(R);
+    if (ui.tab === "look" || ui.mode === "create") renderLookTab(R);
+    else if (ui.tab === "skill" && typeof renderSkillTree === "function") renderSkillTree(R, refresh);
+    else renderInvTab(R);
     renderSlots();
   }
   function tick() {
@@ -20632,11 +20728,11 @@ const LOOK = (function () {
     ui.raf = requestAnimationFrame(tick);
   }
   function stop() { if (ui.raf) cancelAnimationFrame(ui.raf); ui.raf = 0; }
-  function open(mode, from) {
+  function open(mode, from, tab) {
     const d = D();
     ui.mode = mode;
     ui.from = from || "title";
-    ui.tab = mode === "create" ? "look" : ui.tab || "look";
+    ui.tab = mode === "create" ? "look" : tab || ui.tab || "look";
     ui.look = Object.assign({}, d.look);
     ui.eq = Object.assign({}, d.eq);
     ui.outfit = "casual";
