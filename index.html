@@ -1160,11 +1160,11 @@ const CONFIG = {
   // every repeat purchase of the same item costs x1.3
   // ---- waves ----
   waves: {
-    count: { base: 6, lin: 3, quad: 0.25, max: 70 },
+    count: { base: 7, lin: 3.4, quad: 0.25, max: 90 },
     // zombies in wave n = base + lin*(n-1) + quad*(n-1)^2
     hp: { base: 150, lin: 100, expFrom: 10, exp: 1.1 },
     // 150+100(n-1) up to wave 9, then x1.1 per wave
-    runners: { from: 4, p: 0.15, step: 0.07, from10: 0.5, step10: 0.04, max: 0.9 },
+    runners: { from: 2, p: 0.08, step: 0.06, from10: 0.5, step10: 0.04, max: 0.9 },
     // waves 1-3 walk only
     specialFrom: 6,
     specialEvery: 6,
@@ -1172,7 +1172,18 @@ const CONFIG = {
     pause: 32,
     firstPause: 25,
     // short break to repair, buy and reposition
-    spawnGap: { base: 1.35, perWave: 0.11, min: 0.32 },
+    spawnGap: { base: 1.15, perWave: 0.1, min: 0.3 },
+    // v26: dificuldade por patamar (valores interpolados entre um patamar e o próximo, então sobe aos poucos).
+    // hp/spd/atk multiplicam o zumbi; count multiplica a horda; alive = zumbis vivos ao mesmo tempo; gap multiplica o
+    // intervalo entre spawns; elite = chance de um zumbi vir "podre-forte" (mais vida, regenera, olho vermelho).
+    tiers: [
+      { from: 1, name: "ensino", hp: 1, spd: 1.04, atk: 1, count: 1.1, alive: 10, gap: 1, elite: 0 },
+      { from: 4, name: "aquecendo", hp: 1.06, spd: 1.08, atk: 1.1, count: 1.15, alive: 14, gap: 0.9, elite: 0 },
+      { from: 7, name: "press\xE3o", hp: 1.15, spd: 1.14, atk: 1.22, count: 1.2, alive: 18, gap: 0.8, elite: 0.05 },
+      { from: 10, name: "caos", hp: 1.3, spd: 1.22, atk: 1.45, count: 1.3, alive: 22, gap: 0.68, elite: 0.1 },
+      { from: 14, name: "inferno", hp: 1.45, spd: 1.26, atk: 1.6, count: 1.3, alive: 24, gap: 0.62, elite: 0.16 }
+    ],
+    elite: { hp: 1.7, spd: 1.1, atk: 1.2, regen: 0.04, regenDelay: 2.2 },
     // who shows up from which wave: [variant, first wave, weight, extra weight per wave after it]
     pool: [
       ["civil", 1, 4],
@@ -1186,7 +1197,7 @@ const CONFIG = {
       ["pedreiro", 5, 1.2],
       ["gari", 5, 1],
       ["vovo", 6, 1],
-      ["cao", 6, 0.45, 0.04],
+      ["cao", 5, 0.35, 0.04],
       ["grita", 6, 0.8],
       ["cuspidor", 7, 0.6, 0.04],
       ["hazmat", 7, 0.55, 0.04],
@@ -1195,12 +1206,14 @@ const CONFIG = {
       ["selvagem", 9, 0.8],
       ["botijao", 9, 0.6],
       ["pixador", 10, 0.6],
+      ["choque", 8, 0.7, 0.05],
+      ["mutante", 11, 0.45, 0.05],
       ["bruta", 14, 0.15, 0.01]
     ],
     wildPool: ["selvagem", "selvagem", "pixador", "botijao", "cao", "corredor", "corredor"],
     dogPack: 3
   },
-  maxAlive: 18,
+  maxAlive: 24,
   // zombies alive at once (also capped by the quality tier)
   // crowd: zombies keep this fraction of their widths apart; walking into them slows you to `wade` (never a hard wall);
   // the dodge (dash) goes straight through them
@@ -11257,6 +11270,8 @@ const ZV = {
   vovo: { base: "zw", shirt: ["#f6c1d9", "#e59abd", "#c2779a", "#d38bad"], pants: ["#f6c1d9", "#c2779a", "#d38bad"], hair: "#d6d6d6", acc: "rollers", ab: "slipper", hpM: 0.9 },
   selvagem: { base: "zx", ab: "leap" },
   pixador: { base: "zx", shirt: ["#4a4a55", "#34343d", "#24242b"], acc: "cap", ab: "leap", skin: "#6e4a3a" },
+  choque: { base: "zm", name: "Choque", shirt: ["#2a3040", "#1e2230", "#151824", "#0e1018"], pants: ["#22262e", "#181b22", "#101216"], acc: "moto", armor: 1, hpM: 1.9, spdM: 0.9, skin: "#7e8a6a" },
+  mutante: { base: "zm", name: "Mutante", shirt: ["#5a2a26", "#46201c", "#341614", "#220e0c"], pants: ["#3a3236", "#2a2428", "#1c181a"], skin: "#8a4a40", scale: 1.15, hpM: 1.6, spdM: 1.05, ab: "regen" },
   botijao: { base: "zx", shirt: ["#7a9a50", "#5a7a3a", "#3d5528"], acc: "gas", ab: "bomb", spdM: 0.85, skin: "#9a9890" },
   corredor: { base: "zr", name: "Corredor", ab: "runner" },
   rastejante: { base: "zc", name: "Rastejante", ab: "crawl" },
@@ -11348,6 +11363,67 @@ function buildVariants() {
       x.putImageData(id, 0, 0);
       VIMG[vid + ":" + k] = c;
     }
+  }
+  zGradeAll();
+}
+// v26: one "infected" colour grade for every zombie sheet (they come from 3 different art sources).
+// Same rules for all: saturation capped, brightness pulled to a common level, a shared olive tint, and human skin
+// turned sickly. Bosses keep their own look. Source canvases are graded once and shared between variants.
+const ZGRADE = { satCap: 0.58, satMul: 0.88, lumTarget: 66, lumPow: 0.55, tint: [104, 116, 88], tintA: 0.13, skin: [138, 150, 112], skinA: 0.5, skip: { zq: 1, zk1: 1, zk2: 1, zk3: 1 } };
+function zGradeAll() {
+  const G = ZGRADE, done = /* @__PURE__ */ new Map();
+  const lumOf = (r, g, b) => r * 0.3 + g * 0.59 + b * 0.11;
+  for (const key in VIMG) {
+    const vid = key.slice(0, key.indexOf(":")), sk = key.slice(key.indexOf(":") + 1), v = ZV[vid];
+    if (!v || G.skip[v.base]) continue;
+    const src = VIMG[key], R0 = ZROLE[v.base] || {}, skinHex = v.skin || R0.skin, skinC = skinHex ? hex(skinHex) : null;
+    const dk = src.__zg || (skinC ? skinC.join(",") : "-");
+    let memo = done.get(src);
+    if (memo && memo[dk]) {
+      VIMG[key] = memo[dk];
+      continue;
+    }
+    const [c, x] = mkCanvas(src.width, src.height);
+    x.drawImage(src, 0, 0);
+    const id = x.getImageData(0, 0, src.width, src.height), d = id.data;
+    let sum = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) {
+      const L = lumOf(d[i], d[i + 1], d[i + 2]);
+      if (L > 30) {
+        sum += L;
+        n++;
+      }
+    }
+    const mean = n ? sum / n : G.lumTarget, k = Math.pow(G.lumTarget / mean, G.lumPow);
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      let r = d[i], g = d[i + 1], b = d[i + 2];
+      const L0 = lumOf(r, g, b);
+      if (L0 < 26) continue; // outline / deep shadow stays as is
+      if (skinC && Math.abs(r - skinC[0]) + Math.abs(g - skinC[1]) + Math.abs(b - skinC[2]) < 10) {
+        const m = L0 / lumOf(G.skin[0], G.skin[1], G.skin[2]);
+        r = r + (G.skin[0] * m - r) * G.skinA;
+        g = g + (G.skin[1] * m - g) * G.skinA;
+        b = b + (G.skin[2] * m - b) * G.skinA;
+      }
+      // saturation cap (around the pixel's own grey)
+      const L = lumOf(r, g, b), mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
+      const sm = sat > 0 ? Math.min(G.satCap, sat * G.satMul) / sat : 1;
+      r = L + (r - L) * sm;
+      g = L + (g - L) * sm;
+      b = L + (b - L) * sm;
+      // common brightness + shared tint
+      r = r * k + (G.tint[0] - r * k) * G.tintA;
+      g = g * k + (G.tint[1] - g * k) * G.tintA;
+      b = b * k + (G.tint[2] - b * k) * G.tintA;
+      d[i] = r < 0 ? 0 : r > 255 ? 255 : r;
+      d[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+      d[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+    }
+    x.putImageData(id, 0, 0);
+    if (!memo) done.set(src, memo = {});
+    memo[dk] = c;
+    VIMG[key] = c;
   }
 }
 function drawAcc(c, z, key, fr, back) {
@@ -12020,9 +12096,20 @@ function zHP(n2) {
   const h = CONFIG.waves.hp, e = h.expFrom;
   return n2 < e ? h.base + h.lin * (n2 - 1) : (h.base + h.lin * (e - 2)) * Math.pow(h.exp, n2 - e + 1);
 }
+// patamar de dificuldade da onda n2, interpolado entre CONFIG.waves.tiers[i] e [i+1]
+function tierOf(n2) {
+  const T = CONFIG.waves.tiers;
+  let i = 0;
+  while (i < T.length - 1 && n2 >= T[i + 1].from) i++;
+  const a = T[i], b = T[i + 1];
+  if (!b) return a;
+  const u = Math.max(0, Math.min(1, (n2 - a.from) / (b.from - a.from))), o = { name: a.name };
+  for (const k in a) if (typeof a[k] === "number") o[k] = a[k] + (b[k] - a[k]) * u;
+  return o;
+}
 function zCount(n2) {
   const c = CONFIG.waves.count, k = n2 - 1;
-  let v = Math.min(c.max, c.base + c.lin * k + c.quad * k * k);
+  let v = Math.min(c.max, (c.base + c.lin * k + c.quad * k * k) * tierOf(n2).count);
   if (S.special) v *= 0.6;
   return Math.round(v * (periodCfg().zMult || 1));
 }
@@ -12088,6 +12175,18 @@ function spawnZombie(sp, state, vid) {
     abCd: rnd(1.5, 3),
     fuse: 0
   };
+  // v26: patamar de dificuldade + zumbi elite ("podre-forte")
+  const TQ = tierOf(n2), EL = CONFIG.waves.elite;
+  z.hp *= TQ.hp;
+  z.spd *= TQ.spd;
+  z.atk = Math.round(z.atk * TQ.atk);
+  if (v.ab !== "boss" && v.ab !== "dog" && TQ.elite > 0 && Math.random() < TQ.elite) {
+    z.elite = 1;
+    z.hp *= EL.hp;
+    z.spd *= EL.spd;
+    z.atk = Math.round(z.atk * EL.atk);
+  }
+  if (v.ab === "regen") z.elite = z.elite || 2;
   z.maxHp = z.hp;
   S.zs.push(z);
   return z;
@@ -12320,7 +12419,7 @@ function updateRounds(dt) {
         }
       }
       S.spawned++;
-      S.spawnT = Math.max(CONFIG.waves.spawnGap.min, CONFIG.waves.spawnGap.base - n2 * CONFIG.waves.spawnGap.perWave) * rnd(0.7, 1.2);
+      S.spawnT = Math.max(CONFIG.waves.spawnGap.min, CONFIG.waves.spawnGap.base - n2 * CONFIG.waves.spawnGap.perWave) * tierOf(n2).gap * rnd(0.7, 1.2);
     }
   } else if (alive === 0 && (!S.bossLvl || S.bossSpawned)) {
     if (S.special) dropPow(S.player.x, S.player.y - 30, "max");
@@ -13372,6 +13471,7 @@ function critFx(z, hx, hy, kill) {
 }
 function hurtZ(z, dmg, head, src, dirx = 0, hx = z.x, hy = z.y - 30) {
   if (z.state === "dead") return;
+  z.hitT = S.t;
   if (z.boss) {
     if (z.immune > 0 || z.emerge > 0.4) {
       if (src !== "block") dtxt(z, "IMUNE", "#c9a0ff");
@@ -14143,6 +14243,7 @@ function updateZ(z, dt) {
   z.at += dt * zAnimFps(z);
   if (z.flashT > 0) z.flashT -= dt;
   if (z.buff > 0) z.buff -= dt;
+  if (z.elite && z.state !== "dead" && z.hp < z.maxHp && S.t - (z.hitT || -9) > CONFIG.waves.elite.regenDelay) z.hp = Math.min(z.maxHp, z.hp + z.maxHp * CONFIG.waves.elite.regen * dt);
   if (z.jumpCd > 0) z.jumpCd -= dt;
   if (z.atkT > 0) z.atkT -= dt;
   if (z.state === "dead") {
@@ -15495,6 +15596,16 @@ function drawZ0(c, z) {
     P.r(c, z.x - w2 / 2 + 1, z.y - z.h - 7, (w2 - 2) * z.hp / z.maxHp, 1, "#e0322b");
   }
   if (z.buff > 0 && z.state !== "dead" && (S.t * 8 | 0) % 2) P.r(c, z.x - 1, z.y - z.h - 6, 2, 2, "#ff4a4a");
+  if (z.elite && z.state !== "dead" && a > 0.5) {
+    const hd = (HEAD[kk] || [])[fr];
+    if (hd) {
+      const ex = z.x + z.face * (hd[0] - s.ax + 2) * sc, ey = z.y - (s.f - hd[1] - 4) * sc, fl = 0.75 + 0.25 * Math.sin(S.t * 9 + z.slot);
+      c.fillStyle = `rgba(255,40,30,${(0.35 * fl).toFixed(2)})`;
+      c.fillRect(Math.round(ex - 3), Math.round(ey - 2), 6, 4);
+      c.fillStyle = "#ff3a2a";
+      c.fillRect(Math.round(ex - 1), Math.round(ey - 1), 2, 2);
+    }
+  }
   if (z.boss && !z.cap && z.state !== "dead") drawBossEye(c, z, kk, fr, sc);
 }
 function drawWounds(c, z, kk, fr, sc) {
@@ -16587,7 +16698,7 @@ function clearGore() {
   S.decalN = 0;
   S.decalFade = 0;
 }
-const QUAL = { mode: "auto", tier: 0, parts: [1, 0.7, 0.4], amb: [1, 0.6, 0], drops: [1, 0.7, 0.45], alive: [18, 16, 13], tint: [1, 1, 0], fps30: 0 };
+const QUAL = { mode: "auto", tier: 0, parts: [1, 0.7, 0.4], amb: [1, 0.6, 0], drops: [1, 0.7, 0.45], alive: [24, 19, 14], tint: [1, 1, 0], fps30: 0 };
 function autoStartTier() {
   const n2 = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 4, and = /Android/i.test(navigator.userAgent);
   return n2 <= 4 || mem <= 4 || and ? 1 : 0;
@@ -16614,7 +16725,7 @@ function applyTier(t) {
   if (ch) resize();
 }
 function maxAliveNow() {
-  return Math.min(CONFIG.maxAlive, QUAL.alive[QUAL.tier]);
+  return Math.min(CONFIG.maxAlive, QUAL.alive[QUAL.tier], tierOf(S.round || 1).alive | 0);
 }
 const FPSW = { ema: 60, low: 0, high: 0, vlow: 0 };
 function fpsWatch(rdt) {
