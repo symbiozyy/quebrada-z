@@ -575,7 +575,7 @@ body.playing #tBg,body.playing #tFx{display:none}
 .msItem .n{font-size:16px;color:#ffd84a}
 .msItem .d{font-size:16px;color:#cfc8d8;line-height:1.05;min-height:32px}
 .msItem .pips{display:flex;gap:3px}.msItem .pips i{width:14px;height:6px;background:#2a2430;border:1px solid #000}.msItem .pips i.on{background:#7dff6a}
-.msItem canvas{width:64px;height:64px;align-self:center}
+.msItem canvas{width:96px;height:96px;align-self:center;image-rendering:pixelated;background:radial-gradient(circle at 50% 55%,#2c2638,#16131d 70%);border:1px solid #000}
 .msItem button{font-size:16px;padding:5px 6px;border:2px solid #000;background:linear-gradient(#ffb15a,#e8862a);color:#1a0d00;box-shadow:inset 0 -3px 0 #a0500a}
 .msItem button.poor{background:#5a1c18;color:#ff9a8a;box-shadow:none}
 .msItem button.eq{background:#2aa83c;color:#fff;box-shadow:inset 0 -3px 0 #1d7a1a}
@@ -791,7 +791,7 @@ body.hudEditing #hud *{pointer-events:none!important}
 .lkNote{font-size:14px;color:#8a8494;line-height:1.1}
 .lkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:5px}
 .lkItem{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;min-height:96px;background:#1f1b27;border:2px solid #000;box-shadow:inset 0 0 0 1px #3a3446;color:#e9e4d8}
-.lkItem canvas{width:64px;height:64px;image-rendering:pixelated}
+.lkItem canvas{width:72px;height:72px;image-rendering:pixelated;background:radial-gradient(circle at 50% 55%,#2c2638,#16131d 70%)}
 .lkItem .nm{font-size:13px;line-height:1;text-align:center}
 .lkItem.on{border-color:#2aa83c;box-shadow:inset 0 0 0 2px #2aa83c}.lkItem.used{opacity:.55}
 .lkShopB{align-self:flex-start}
@@ -20455,6 +20455,75 @@ const LOOK = (function () {
     const im = IMG.c3_Idle, s = SHEETS.c3_Idle;
     if (im && s) x.drawImage(im, fr % s.n * 128, 0, 128, 128, cx - s.ax * s2, by - 128 * s2, 128 * s2, 128 * s2);
   }
+  // ---------- miniaturas (v26): manequim neutro + SÓ o item, enquadrado pela máscara real de pixels ----------
+  // O item é desenhado sobre um manequim cinza; os pixels que mudam (com item x sem item) formam a máscara.
+  // A janela de recorte centraliza a máscara e escolhe o zoom (4x, 3x, 2x ou 1x) pelo tamanho dela; o resto do corpo fica escurecido.
+  const MANNEQ = { chest: { id: "camiseta_preta", pal: { base: "#5c5866", shade: "#46424e", light: "#6c6876" } }, legs: { id: "jeans_escuro", pal: { base: "#4a4652", shade: "#3a3642", light: "#58545f" } }, feet: { id: "tenis_preto", pal: { base: "#3e3a44", shade: "#2e2a34", light: "#4c4852", sole: "#5c5866" } }, belt: null, face: null, hat: null, back: null, front: null };
+  const REGION = { hat: "head", face: "head", front: "neck", back: "back", belt: "waist", chest: "torso", legs: "legs", feet: "feet" };
+  const TH = 96, THC = {}, THS = {};
+  let thX = null;
+  function thFrame(look, E) {
+    if (!thX) { const c = document.createElement("canvas"); c.width = c.height = 1; thX = c.getContext("2d"); }
+    rigDrawFrame(thX, 0, 0, look, E, "Idle", 0, 1, {});
+    return new Uint32Array(RZ.col);
+  }
+  function thEq(keys, look) {
+    const E = Object.assign({}, MANNEQ);
+    keys.forEach((k) => { const it = ITEMS[k]; if (it) E[RSLOT(it)] = k; });
+    if (E.feet === "chinelo") { const sk = SKIN_TONES[look.skin] || SKIN_TONES[0], c = ITEMS.chinelo.c; E.feet = { id: "chinelo", pal: { base: sk[0], light: c[0], sole: c[1] } }; }
+    return E;
+  }
+  function thumbCanvas(keys, opt) {
+    opt = opt || {};
+    const look = rigLook(opt.look), ck = JSON.stringify(look) + "|" + keys.join(",") + (opt.full ? "|f" : "");
+    if (THC[ck]) return THC[ck];
+    const F = typeof RIG_F !== "undefined" ? RIG_F : 128, c0 = thFrame(look, MANNEQ), c1 = keys.length ? thFrame(look, thEq(keys, look)) : c0;
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, n = 0;
+    const mask = new Uint8Array(F * F), cols = {};
+    for (let i = 0; i < c1.length; i++) if (c1[i] >>> 24 && c1[i] !== c0[i] && keys.length) {
+      mask[i] = 1; n++;
+      const X = i % F, Y = i / F | 0;
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+      cols[c1[i]] = (cols[c1[i]] || 0) + 1;
+    }
+    let bx0 = x0, by0 = y0, bx1 = x1, by1 = y1;
+    if (!n || opt.full) { // corpo inteiro (kits, "nada" ou item invisível)
+      bx0 = 1e9; by0 = 1e9; bx1 = -1; by1 = -1;
+      for (let i = 0; i < c1.length; i++) if (c1[i] >>> 24) { const X = i % F, Y = i / F | 0; if (X < bx0) bx0 = X; if (X > bx1) bx1 = X; if (Y < by0) by0 = Y; if (Y > by1) by1 = Y; }
+    }
+    const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1, need = Math.max(bw, bh) + 10;
+    const one = keys.length === 1 && ITEMS[keys[0]] ? RSLOT(ITEMS[keys[0]]) : "", s4 = one === "back" || one === "belt" ? 0 : 4;
+    const s = opt.full || !n ? 1 : s4 && need <= TH / 4 ? 4 : need <= TH / 3 ? 3 : need <= TH / 2 ? 2 : 1, w = TH / s;
+    let wx = Math.round((bx0 + bx1 + 1) / 2 - w / 2), wy = Math.round((by0 + by1 + 1) / 2 - w / 2);
+    wx = Math.max(0, Math.min(F - w, wx)); wy = Math.max(0, Math.min(F - w, wy));
+    if (opt.full || !n) wy = Math.min(F - w, Math.max(0, by1 + 4 - w)); // pés perto da base
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = TH;
+    const x = cv.getContext("2d"), id = x.createImageData(TH, TH), out = new Uint32Array(id.data.buffer), dim = keys.length && !opt.full;
+    for (let oy = 0; oy < TH; oy++) for (let ox = 0; ox < TH; ox++) {
+      const sx = wx + (ox / s | 0), sy = wy + (oy / s | 0);
+      if (sx < 0 || sy < 0 || sx >= F || sy >= F) continue;
+      const i = sy * F + sx, p = c1[i];
+      if (!(p >>> 24)) continue;
+      if (!dim || mask[i]) { out[oy * TH + ox] = p; continue; }
+      // corpo do manequim: escurecido e dessaturado pra o item saltar aos olhos
+      const r = p & 255, g = p >>> 8 & 255, b = p >>> 16 & 255, l = (r * 0.3 + g * 0.59 + b * 0.11) * 0.5 + 10;
+      out[oy * TH + ox] = (p & 0xff000000) | (l << 16) | (l << 8) | (l | 0);
+    }
+    x.putImageData(id, 0, 0);
+    THS[ck] = { keys: keys.slice(), n, bbox: n ? [x0, y0, x1, y1] : null, s, win: [wx, wy, w], cols, region: keys.length === 1 && ITEMS[keys[0]] ? REGION[RSLOT(ITEMS[keys[0]])] : null };
+    return THC[ck] = cv;
+  }
+  // pinta a miniatura (cacheada) num canvas de cartão
+  function thumb(cv, keys, opt) {
+    cv.width = cv.height = TH;
+    const x = cv.getContext("2d");
+    x.imageSmoothingEnabled = false;
+    x.clearRect(0, 0, TH, TH);
+    if (!hasRig()) return drawPreview(cv, {});
+    try { x.drawImage(thumbCanvas(keys, opt), 0, 0); } catch (e) { console.warn("thumb", e); }
+  }
+  const thumbInfo = (keys, opt) => { thumbCanvas(keys, opt); const look = rigLook(opt && opt.look); return THS[JSON.stringify(look) + "|" + keys.join(",") + (opt && opt.full ? "|f" : "")]; };
   const animFrames = (a) => typeof RIG_ANIMS !== "undefined" && RIG_ANIMS[a] ? RIG_ANIMS[a].n : ({ Idle: 6, Walk: 8, Run: 8, Kick: 5 })[a] || 6;
   const animMs = (a) => typeof RIG_ANIMS !== "undefined" && RIG_ANIMS[a] && RIG_ANIMS[a].ms ? RIG_ANIMS[a].ms : ({ Idle: 150, Walk: 100, Run: 80, Kick: 90 })[a] || 120;
 
@@ -20508,16 +20577,12 @@ const LOOK = (function () {
   function itemCard(k, onClick, state) {
     const it = ITEMS[k], b = h("button", "lkItem" + (state ? " " + state : ""));
     const cv = h("canvas");
-    cv.width = cv.height = 64;
-    const eq = Object.assign({}, ui.eq);
-    if (k) equipInto(eq, k, ui.slot); else eq[ui.slot] = null;
-    drawPreview(cv, { look: ui.look, eq, focus: focusOf(k ? it : { slot: slotOf(ui.slot) }), floor: false });
+    thumb(cv, k ? [k] : [], { look: ui.look, full: !k });
     b.append(cv);
     b.append(h("span", "nm", k ? it.name : "Nada"));
     b.onclick = onClick;
     return b;
   }
-  const focusOf = (it) => it.slot === "head" || it.slot === "acc" && (it.spot === "face" || it.spot === "neck") ? "head" : "body";
   function renderInvTab(R) {
     const d = D(), want = slotOf(ui.slot);
     const strip = h("div", "lkSlotsR");
@@ -20636,11 +20701,8 @@ const LOOK = (function () {
         card.append(h("div", "n", kit.name));
         card.append(h("i", "kitTag", "KIT"));
         const cv = h("canvas");
-        cv.width = cv.height = 64;
-        const eq = Object.assign({}, d.eq);
-        kit.items.forEach((k) => equipInto(eq, k));
         card.append(cv);
-        drawPreview(cv, { eq });
+        thumb(cv, kit.items, { full: 1 });
         card.append(h("div", "d", kit.items.map((k) => ITEMS[k].name).join(", ")));
         const b = h("button");
         const wearing = kit.items.every((k) => isOn(d.eq, k));
@@ -20672,11 +20734,8 @@ const LOOK = (function () {
       card.append(h("div", "n", it.name));
       card.append(h("i", "rar", RAR[it.rar]));
       const cv = h("canvas");
-      cv.width = cv.height = 64;
-      const eq = Object.assign({}, d.eq);
-      equipInto(eq, k);
       card.append(cv);
-      drawPreview(cv, { eq, focus: focusOf(it), floor: focusOf(it) !== "head" });
+      thumb(cv, [k]);
       const b = h("button");
       if (on) { b.textContent = "USANDO"; b.className = "eq"; }
       else if (own) b.textContent = "VESTIR";
@@ -20712,7 +20771,7 @@ const LOOK = (function () {
     if (fresh.length) SAVE.save();
     return fresh.map((k) => ITEMS[k].name);
   }
-  return { ITEMS, KITS, OUTFITS, SLOTS, SKIN_TONES, EYES, HAIR_NAMES, HAIR_COLS, sanitize, canEquip, equipInto, kitPrice, apply, drawPreview, open, wire, shopGrid, checkUnlocks, rigLook, eqItems, defLook, defEq };
+  return { ITEMS, KITS, OUTFITS, SLOTS, SKIN_TONES, EYES, HAIR_NAMES, HAIR_COLS, sanitize, canEquip, equipInto, kitPrice, apply, drawPreview, open, wire, shopGrid, checkUnlocks, rigLook, eqItems, defLook, defEq, thumb, thumbInfo, REGION, RSLOT };
 })();
 
 LOOK.wire();
