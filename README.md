@@ -24,3 +24,7 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 - Caldo de Cana mais fraco (regeneração +35% em vez de 2x).
 - Armas douradas bem mais raras e menos apelativas; dano das armas segue o preço (SMGs baratas um pouco mais fracas, metralhadoras pesadas valem o que custam).
 - Zumbis no mezanino não ficam mais travados contra a parede quando o jogador está na mesma altura do outro lado.
+
+## Novidades da v26.2
+- **Seringa**: botão novo abaixo da Esquiva (tecla V no teclado). Cura 45% da vida, recarga de 7 s, comprada na loja (EQUIPAMENTO), acumula até 3.
+- **Kit de Socorro consertado**: custa R$ 17.000, só revive se foi comprado, **uma vez por partida**, volta com 60% de vida e metade da munição (carregador e reserva), com invulnerabilidade curta.
