@@ -55,3 +55,8 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 - **Mesa de upgrade (estilo Pack-a-Punch)**: fica ao lado da loja e não fecha com ela. Só evolui arma DOURADA para DIAMANTE (R$ 8.000): tiros de laser e +20% de dano sobre a dourada, só contra zumbis (nos chefes vale o dano da dourada).
 - **Chefes derrubam douradas diferentes**, cada vez mais fortes (Capitão da onda 7, Observador da onda 14, Capitão da onda 20).
 - **Ondas até a 20 em todas as quebradas**: depois do Observador (onda 14) o jogo segue; na onda 20 volta o Capitão Caveira com vida cheia e já em fúria. A vitória agora é na onda 20.
+
+## Novidades da v26.7
+- O próximo mapa agora libera ao derrotar o Observador na onda 14 (o jogo continua até a onda 20).
+- Mesa de upgrade passou a custar R$ 18.000.
+- Snipers douradas e diamante: mira perfeita (sem espalhamento) e quase sem recuo. São as armas mais raras entre os drops dos chefes (~7% no total).
