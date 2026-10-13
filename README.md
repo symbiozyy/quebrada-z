@@ -60,3 +60,6 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 - O próximo mapa agora libera ao derrotar o Observador na onda 14 (o jogo continua até a onda 20).
 - Mesa de upgrade passou a custar R$ 18.000.
 - Snipers douradas e diamante: mira perfeita (sem espalhamento) e quase sem recuo. São as armas mais raras entre os drops dos chefes (~7% no total).
+
+## Novidades da v26.8
+- Nova área "Resgatar código" nos Ajustes.
