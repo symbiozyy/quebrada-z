@@ -44,5 +44,5 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 - Obs.: a trilha e a ambiência ficam na pasta `audio/`; para jogar o `index.html` fora do site, mantenha essa pasta ao lado dele.
 
 ## Novidades da v26.5
-- Respiração dos zumbis refeita: voz rouca com catarro (antes era ruído filtrado, parecia água).
+- Respiração dos zumbis refeita: voz rouca com catarro (antes era ruído filtrado, parecia água). Comum (dois arfares e gemido), pedreiro (catarro de fumante e "hunh" seco) e bruta/brutão (fungada e ronco grave) têm cada um o seu som.
 - Respiração não empilha mais: no máximo 2 ao mesmo tempo (1 no celular), intervalo mínimo entre elas e só de zumbi perto. Menos nós de áudio, menos lag.
