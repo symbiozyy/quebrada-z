@@ -42,3 +42,7 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 - **KABUM** não mata mais os chefes.
 - **Mais leve no celular**: ~40 MB a menos de memória de imagem (flash branco gerado sob demanda), vozes dos zumbis carregadas só quando o tipo aparece, cenário desenhando só a faixa com conteúdo, sem desfoque atrás dos menus e pausa sem redesenhar a cena.
 - Obs.: a trilha e a ambiência ficam na pasta `audio/`; para jogar o `index.html` fora do site, mantenha essa pasta ao lado dele.
+
+## Novidades da v26.5
+- Respiração dos zumbis refeita: voz rouca com catarro (antes era ruído filtrado, parecia água).
+- Respiração não empilha mais: no máximo 2 ao mesmo tempo (1 no celular), intervalo mínimo entre elas e só de zumbi perto. Menos nós de áudio, menos lag.
