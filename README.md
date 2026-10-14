@@ -60,3 +60,11 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
 - O próximo mapa agora libera ao derrotar o Observador na onda 14 (o jogo continua até a onda 20).
 - Mesa de upgrade passou a custar R$ 18.000.
 - Snipers douradas e diamante: mira perfeita (sem espalhamento) e quase sem recuo. São as armas mais raras entre os drops dos chefes (~7% no total).
+
+## Novidades da v26.8
+- **Capitão Caveira redesenhado**: pixel art nova, desenhada quadro a quadro (antes eram folhas ampliadas e borradas). As 3 fases agora são o mesmo homem, com o mesmo corpo, a mesma máscara de caveira, a mesma calça, cinto, joelheiras e coturnos, e cada fase o destrói um pouco mais:
+  - **Fase 1 (blindado)**: capacete, balaclava, colete com placas e carregadores, máscara de caveira intacta e fuzil.
+  - **Fase 2 (sem colete)**: perde o capacete (cabeça raspada e costurada), máscara trincada com um olho em brasa, colete rasgado e sangrando, ainda de fuzil.
+  - **Fase 3 (fúria)**: sem farda de cima, corpo inchado com veias em brasa, olhos acesos, garras e um brilho vermelho de calor em volta; arremessa sangue e esmaga o chão.
+- Caixa de acerto e ponto de saída do tiro ajustados à arte nova. O jogo ficou ~840 KB mais leve.
+- O desenho é gerado por `tools/capitao/` (`build.py` renderiza as folhas, `embed.py` coloca no `index.html`).
