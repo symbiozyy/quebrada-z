@@ -81,3 +81,9 @@ elsewhere in the repo, so they are restated here rather than lost:
 - **Helpers in `.claude/scripts/` emit observations, never verdicts.** A script
   that scores or judges will eventually contradict a mode or override it cannot
   see. (Cited by `artifact-check.sh` and `adr-dep-graph.sh`.)
+
+## Sprite pipeline (ssc)
+
+Sprite/asset generation uses the `ssc` CLI (`pip install sprite-sheet-generator-claude-code`) and the `sprite-*` skills.
+
+@.claude/docs/ssc-harness.md
