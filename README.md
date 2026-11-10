@@ -68,3 +68,6 @@ O jogo inteiro está em `index.html` (um arquivo só). O progresso fica salvo no
   - **Fase 3 (fúria)**: sem farda de cima, corpo inchado com veias em brasa, olhos acesos, garras e um brilho vermelho de calor em volta; arremessa sangue e esmaga o chão.
 - Caixa de acerto e ponto de saída do tiro ajustados à arte nova. O jogo ficou ~840 KB mais leve.
 - O desenho é gerado por `tools/capitao/` (`build.py` renderiza as folhas, `embed.py` coloca no `index.html`).
+
+## Novidades da v26.9
+- Nova área "Resgatar código" nos Ajustes.
